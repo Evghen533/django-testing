@@ -129,6 +129,16 @@ dmypy.json
 .pyre/
 
 # Папки, создаваемые средой разработки
+
+.git/*
+env/
+venv/
+.venv
+.venv/
+
+__pycache__/
+*.py[cod]
+
 .idea
 .DS_Store
 .AppleDouble
@@ -155,6 +165,12 @@ media/
 sent_emails/
 
 #covarage
+
+static/
+media/
+
+db.sqlite3
+
 htmlcov/
 .coverage
 .coverage.*

@@ -39,3 +39,5 @@ for project_name, path in projects_map.items():
 
 
 assert not errors, ''.join(errors)
+
+assert not errors, ''.join(errors)
