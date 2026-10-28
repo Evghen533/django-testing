@@ -26,7 +26,8 @@ class Home(ListView):
 
 class NotesList(ListView):
     """Страница списка заметок (notes/) — дублирует логику Home,
-    если нужно отдельное имя URL."""
+    если нужно отдельное имя URL.
+    """
     model = Note
     template_name = 'notes/list.html'
     context_object_name = 'notes'
