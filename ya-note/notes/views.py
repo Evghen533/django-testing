@@ -1,4 +1,3 @@
-from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import (
@@ -26,7 +25,8 @@ class Home(ListView):
 
 
 class NotesList(ListView):
-    """Страница списка заметок (notes/) — дублирует логику Home, если нужно отдельное имя URL."""
+    """Страница списка заметок (notes/) — дублирует логику Home,
+    если нужно отдельное имя URL."""
     model = Note
     template_name = 'notes/list.html'
     context_object_name = 'notes'
