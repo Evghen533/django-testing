@@ -1,4 +1,3 @@
-# news/tests/test_trial.py
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.test import TestCase
@@ -13,6 +12,7 @@ class TestNews(TestCase):
     TEXT = 'Тестовый текст'
 
 class TestNews(TestCase):
+
 
     @classmethod
     def setUpTestData(cls):

@@ -18,7 +18,6 @@ class NoteSuccess(LoginRequiredMixin, generic.TemplateView):
     template_name = 'notes/success.html'
 
 
-# Базовый класс ТОЛЬКО для защищённых действий (Create/Update/Delete/List своих заметок)
 class NoteBase(LoginRequiredMixin):
     model = Note
     success_url = reverse_lazy('notes:success')
@@ -56,16 +55,12 @@ class NotesList(NoteBase, generic.ListView):
     template_name = 'notes/list.html'
 
 
-# ВАЖНО: NoteDetail теперь НЕ наследуется от NoteBase и НЕ требует авторизации
 class NoteDetail(generic.DetailView):
     """Заметка подробно (публичная страница)."""
     model = Note
     template_name = 'notes/detail.html'
-    context_object_name = 'note'  # явно задаём имя, чтобы в шаблоне было {{ note }}
 
-    # Если нужно, можно добавить сортировку комментариев прямо здесь:
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Для теста удобно сразу положить отсортированные комментарии
         context['comments'] = self.object.comments.order_by('created')
         return context

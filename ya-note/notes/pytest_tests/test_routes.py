@@ -80,8 +80,8 @@ def test_pages_availability_for_different_users(
 
 
 def test_logout_availability_for_anonymous_user(client):
-    url = reverse('users:logout') # Получаем ссылку на страницу выхода.
-    response = client.post(url) # Выполняем POST-запрос.
+    url = reverse('users:logout')
+    response = client.post(url)
     assert response.status_code == HTTPStatus.OK
 
 

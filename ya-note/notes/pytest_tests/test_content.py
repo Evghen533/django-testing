@@ -1,4 +1,3 @@
-# notes/pytest_tests/test_content.py
 import pytest
 
 from django.conf import settings
@@ -12,7 +11,7 @@ def test_notes_list_limit(client, many_notes):
     response = client.get(url)
     assert response.status_code == 200
     object_list = response.context['object_list']
-    limit = getattr(settings, 'NOTES_PER_PAGE', 10)  # подставь своё значение, если нет в settings
+    limit = getattr(settings, 'NOTES_PER_PAGE', 10)
     assert len(object_list) == limit
 
 
@@ -35,7 +34,11 @@ def test_notes_order_on_list(client, many_notes):
         (pytest.lazy_fixture('not_author_client'), False),
     )
 )
-def test_notes_list_for_different_users(note, parametrized_client, note_in_list):
+def test_notes_list_for_different_users(
+    note,
+    parametrized_client,
+    note_in_list
+):
     url = reverse('notes:list')
     response = parametrized_client.get(url)
     object_list = response.context['object_list']
@@ -44,13 +47,13 @@ def test_notes_list_for_different_users(note, parametrized_client, note_in_list)
 
 @pytest.mark.django_db
 def test_detail_page_shows_correct_note_data(client, single_note):
-    """Detail-страница должна отображать корректные title, text и slug заметки."""
+    """Detail-страница должна отображать корректные title,
+    text и slug заметки."""
     url = reverse('notes:detail', args=(single_note.slug,))
     response = client.get(url)
     assert response.status_code == 200
 
     note_obj = response.context.get('note') or response.context.get('object')
-    # Если в DetailView контекстная переменная называется иначе — поправь эту строку.
     assert note_obj is not None
     assert note_obj.title == single_note.title
     assert note_obj.text == single_note.text

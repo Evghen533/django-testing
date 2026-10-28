@@ -13,12 +13,18 @@ User = get_user_model()
 
 @pytest.fixture
 def author(django_user_model):
-    return django_user_model.objects.create_user(username='Автор', password='password')
+    return django_user_model.objects.create_user(
+        username='Автор',
+        password='password'
+    )
 
 
 @pytest.fixture
 def not_author(django_user_model):
-    return django_user_model.objects.create_user(username='Не автор', password='password')
+    return django_user_model.objects.create_user(
+        username='Не автор',
+        password='password'
+    )
 
 
 @pytest.fixture
@@ -46,7 +52,8 @@ def note(author):
 
 @pytest.fixture
 def slug_for_args(note):
-    """Возвращает кортеж со slug, чтобы удобно передавать в args для reverse."""
+    """Возвращает кортеж со slug,
+    чтобы удобно передавать в args для reverse."""
     return (note.slug,)
 
 
@@ -70,7 +77,8 @@ def many_notes(author):
 
 @pytest.fixture
 def single_note(author):
-    """Ещё одна отдельная заметка для detail-страницы (чтобы не зависеть от note)."""
+    """Ещё одна отдельная заметка
+    для detail-страницы (чтобы не зависеть от note)."""
     return Note.objects.create(
         title='Тестовая заметка для detail',
         text='Текст для проверки detail-страницы.',
@@ -98,10 +106,12 @@ def news(author):
         author=author,
     )
 
+
 @pytest.fixture
 def slug_for_news_args(news):
     """Кортеж со slug новости для передачи в args reverse()."""
     return (news.slug,)
+
 
 @pytest.fixture
 def many_news(author):
@@ -120,6 +130,7 @@ def many_news(author):
     ]
     return News.objects.bulk_create(news_list)
 
+
 @pytest.fixture
 def single_news(author):
     """Отдельная новость для detail-страницы (независимо от news)."""
@@ -130,11 +141,13 @@ def single_news(author):
         author=author
     )
 
+
 @pytest.fixture
 def comment_data():
     return {
         'text': 'Тестовый комментарий',
     }
+
 
 @pytest.fixture
 def single_comment(single_news, author):

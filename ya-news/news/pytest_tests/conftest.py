@@ -6,15 +6,20 @@ from news.models import News, Comment
 
 User = get_user_model()
 
+
 @pytest.fixture
 def author(db):
     """Создаёт пользователя-автора."""
     return User.objects.create_user(username='Лев Толстой', password='pass')
 
+
 @pytest.fixture
 def reader(db):
     """Создаёт обычного читателя (не автора)."""
-    return User.objects.create_user(username='Читатель простой', password='pass')
+    return User.objects.create_user(
+        username='Читатель простой', password='pass'
+    )
+
 
 @pytest.fixture
 def news(author, db):
@@ -23,9 +28,8 @@ def news(author, db):
         title='Заголовок новости',
         text='Текст новости для тестов контента',
         date=date.today(),
-        # Если в твоей модели News есть поле author, раскомментируй строку ниже:
-        # author=author
     )
+
 
 @pytest.fixture
 def comment(news, author, db):
@@ -36,11 +40,11 @@ def comment(news, author, db):
         text='Комментарий к новости',
     )
 
+
 @pytest.fixture
 def news_form_data():
     """Данные для создания новости (без slug, так как в News его нет)."""
     return {
         'title': 'Новая новость через форму',
         'text': 'Полный текст новой новости',
-        # 'date' обычно не передаётся через форму, берётся автоматически
     }

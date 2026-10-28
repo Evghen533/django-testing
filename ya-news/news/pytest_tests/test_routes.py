@@ -11,7 +11,6 @@ def test_home_page(client):
 
 
 def test_detail_page(client, news):
-    # В unittest было по ID, тут тоже можно по ID — reverse это поддерживает
     url = reverse('news:detail', args=(news.id,))
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK

@@ -4,6 +4,7 @@ from notes.models import Note, Comment
 from django.utils import timezone
 from datetime import timedelta
 
+
 @pytest.mark.django_db
 def test_homepage_shows_max_10_notes(client, author):
     """
@@ -51,7 +52,6 @@ def test_notes_are_sorted_by_date_desc(client, author):
     objects = response.context['object_list']
     dates = [obj.pub_date for obj in objects]
 
-    # Проверяем, что даты идут по убыванию
     assert dates == sorted(dates, reverse=True)
 
 
@@ -65,7 +65,6 @@ def test_detail_page_shows_note_fields(client, note):
     response = client.get(url)
 
     assert response.status_code == 200
-    # DetailView передаёт объект как 'object' (или можно явно как 'note')
     context_note = response.context.get('object')
     assert context_note is not None
 
@@ -85,7 +84,7 @@ def test_detail_page_shows_comments_list(client, note, author):
     """
     Comment.objects.bulk_create([
         Comment(
-            note=note,  # точно под твою модель: поле называется note
+            note=note,
             author=author,
             text=f'Comment {i}',
         )
@@ -97,13 +96,11 @@ def test_detail_page_shows_comments_list(client, note, author):
 
     assert response.status_code == 200
 
-    # Получаем заметку из контекста (DetailView -> 'object')
     obj = response.context.get('object')
     comments = obj.comments.all() if obj else []
 
     assert len(comments) == 3
 
-    # Комментарии должны идти по возрастанию времени (старые первыми)
     comments = obj.comments.order_by('created').all() if obj else []
     timestamps = [c.created for c in comments]
     assert timestamps == sorted(timestamps)

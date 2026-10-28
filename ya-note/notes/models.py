@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-from django.utils import timezone  # <-- обязательно добавь эту строку
+from django.utils import timezone
 from pytils.translit import slugify
 from django.contrib.auth.models import User
 
@@ -45,7 +45,11 @@ class Note(models.Model):
 
 
 class Comment(models.Model):
-    note = models.ForeignKey(Note, on_delete=models.CASCADE, related_name='comments')
+    note = models.ForeignKey(
+        Note,
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     text = models.TextField()
     created = models.DateTimeField(auto_now_add=True)

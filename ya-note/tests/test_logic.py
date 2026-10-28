@@ -1,14 +1,15 @@
 import pytest
 from django.urls import reverse
 from notes.models import Note
-from notes.forms import WARNING  # только WARNING, BAD_WORDS нет
+from notes.forms import WARNING
 
 pytestmark = pytest.mark.django_db
 
+
 def test_anonymous_cannot_create_note(client):
     data = {'title': 'Test', 'text': 'Text'}
-    url = reverse('notes:add')  # было create → стало add
-    response = client.post(url, data)  # без follow=True
+    url = reverse('notes:add')
+    response = client.post(url, data)
     assert response.status_code == 302
     assert '/auth/login/' in response.url
 
@@ -27,7 +28,7 @@ def test_author_can_create_note(client, author):
 def test_author_can_edit_own_note(client, author, note):
     client.force_login(author)
     new_text = 'Updated content'
-    url = reverse('notes:edit', args=[note.slug])  # имя edit совпадает с urls.py
+    url = reverse('notes:edit', args=[note.slug])
     response = client.post(url, {'title': note.title, 'text': new_text})
     assert response.status_code == 302
     note.refresh_from_db()

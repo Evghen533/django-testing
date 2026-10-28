@@ -1,4 +1,3 @@
-# ya-news/news/pytest_tests/test_logic.py
 import pytest
 from django.urls import reverse
 from http import HTTPStatus

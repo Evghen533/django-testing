@@ -1,8 +1,7 @@
-# news/pytest_tests/test_content.py
 import pytest
 from django.urls import reverse
 from http import HTTPStatus
-from datetime import date, timedelta
+from datetime import date
 
 pytestmark = pytest.mark.django_db
 
