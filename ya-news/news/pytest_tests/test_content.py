@@ -24,16 +24,16 @@ def test_news_detail_page_shows_full_content(client, news):
     assert news.title in content, "Заголовок новости не отображается"
     assert news.text in content, "Текст новости не отображается"
 
-    # Проверяем, что объект новости есть в контексте
     assert 'news' in response.context, "Объект новости отсутствует в контексте"
 
-    # Получаем новость из контекста и проверяем её поля
     context_news = response.context['news']
     assert context_news.pk == news.pk, "В контекст попала не та новость"
-    assert isinstance(context_news.date, date), f"Поле date должно быть типа date, а получено {type(context_news.date)}"
+    assert isinstance(context_news.date, date), (
+        f"Поле date должно быть типа date,"
+        "а получено {type(context_news.date)}"
+    )
     assert context_news.date == news.date, "Дата в контексте не совпадает с датой объекта"
 
-    # Форма комментария у анонимного пользователя быть не должна
     assert 'form' not in response.context
 
 
@@ -66,7 +66,6 @@ def test_pagination_limit_via_settings(client):
     author = User.objects.create_user(username='pag_author', password='pass')
 
     for i in range(15):
-        # Только те поля, что реально есть в модели: title, text, date
         News.objects.create(
             title=f'News {i}',
             text=f'Text {i}',
@@ -83,7 +82,8 @@ def test_pagination_limit_via_settings(client):
     limit = getattr(settings, 'NEWS_COUNT_ON_HOME_PAGE', 10)
 
     assert len(news_feed) <= limit, (
-        f"На главной больше новостей, чем разрешено (лимит {limit}, найдено {len(news_feed)})"
+        f"На главной больше новостей, чем разрешено"
+        "(лимит {limit}, найдено {len(news_feed)})"
     )
 
 
@@ -102,5 +102,4 @@ def test_other_user_cannot_access_comment_edit(client, comment, reader):
     client.force_login(reader)
     url = reverse('news:edit', kwargs={'pk': comment.pk})
     response = client.get(url)
-    # CommentBase фильтрует только свои комментарии → 404 для чужого
     assert response.status_code == 404

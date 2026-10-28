@@ -11,16 +11,12 @@ class TestNews(TestCase):
     TITLE = 'Заголовок новости'
     TEXT = 'Тестовый текст'
 
+
 class TestNews(TestCase):
-
-
     @classmethod
     def setUpTestData(cls):
-        # Создаём пользователя.
         cls.user = User.objects.create(username='testUser')
-        # Создаём объект клиента.
         cls.user_client = Client()
-        # "Логинимся" в клиенте при помощи метода force_login().
         cls.user_client.force_login(cls.user)
 
     def test_successful_creation(self):

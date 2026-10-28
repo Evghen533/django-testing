@@ -4,6 +4,7 @@ from django.urls import reverse
 
 pytestmark = pytest.mark.django_db
 
+
 def test_home_page(client):
     url = reverse('news:home')
     response = client.get(url)
@@ -26,10 +27,17 @@ def test_pages_availability(client, news):
     for name, args in urls:
         url = reverse(name, args=args)
         response = client.get(url)
-        assert response.status_code == HTTPStatus.OK, f"Страница {name} недоступна"
+        assert response.status_code == HTTPStatus.OK, (
+            f"Страница {name} недоступна"
+        )
 
 
-def test_availability_for_comment_edit_and_delete(client, comment, author, reader):
+def test_availability_for_comment_edit_and_delete(
+        client,
+        comment,
+        author,
+        reader
+    ):
     users_statuses = [
         (author, HTTPStatus.OK),
         (reader, HTTPStatus.NOT_FOUND),
@@ -51,7 +59,6 @@ def test_redirect_for_anonymous_client(client, comment):
         url = reverse(name, args=(comment.id,))
         redirect_url = f'{login_url}?next={url}'
         response = client.get(url)
-        # В pytest нет assertRedirects, поэтому проверяем вручную
         assert response.status_code == 302, f"Не было редиректа для {name}"
         assert response.url == redirect_url, (
             f"Ожидался редирект на {redirect_url}, но был на {response.url}"

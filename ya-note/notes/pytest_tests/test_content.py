@@ -1,12 +1,13 @@
 import pytest
-
 from django.conf import settings
 from django.urls import reverse
+from notes.forms import NoteForm
 
 
 @pytest.mark.django_db
 def test_notes_list_limit(client, many_notes):
-    """На странице списка должно отображаться ровно NOTES_PER_PAGE заметок."""
+    """На странице списка должно отображаться ровно NOTES_PER_PAGE заметок.
+    """
     url = reverse('notes:list')
     response = client.get(url)
     assert response.status_code == 200
@@ -17,7 +18,8 @@ def test_notes_list_limit(client, many_notes):
 
 @pytest.mark.django_db
 def test_notes_order_on_list(client, many_notes):
-    """Заметки должны идти по убыванию created_at (новые сверху)."""
+    """Заметки должны идти по убыванию created_at (новые сверху).
+    """
     url = reverse('notes:list')
     response = client.get(url)
     assert response.status_code == 200
@@ -48,7 +50,8 @@ def test_notes_list_for_different_users(
 @pytest.mark.django_db
 def test_detail_page_shows_correct_note_data(client, single_note):
     """Detail-страница должна отображать корректные title,
-    text и slug заметки."""
+    text и slug заметки.
+    """
     url = reverse('notes:detail', args=(single_note.slug,))
     response = client.get(url)
     assert response.status_code == 200
@@ -66,7 +69,6 @@ def test_create_note_page_contains_form(author_client):
     url = reverse('notes:add')
     response = author_client.get(url)
     assert 'form' in response.context
-    from notes.forms import NoteForm
     assert isinstance(response.context['form'], NoteForm)
 
 
@@ -75,7 +77,6 @@ def test_edit_note_page_contains_form(slug_for_args, author_client):
     url = reverse('notes:edit', args=slug_for_args)
     response = author_client.get(url)
     assert 'form' in response.context
-    from notes.forms import NoteForm
     assert isinstance(response.context['form'], NoteForm)
 
 
@@ -91,5 +92,4 @@ def test_pages_contain_form(author_client, name, args):
     url = reverse(name, args=args)
     response = author_client.get(url)
     assert 'form' in response.context
-    from notes.forms import NoteForm
     assert isinstance(response.context['form'], NoteForm)
