@@ -1,3 +1,5 @@
+"""Тесты отображения контента новостей и пагинации."""
+
 import pytest
 from django.urls import reverse
 from http import HTTPStatus
@@ -11,6 +13,11 @@ pytestmark = pytest.mark.django_db
 
 
 def test_news_list_renders_news_feed(client, news):
+    """Проверка, что список новостей содержит news_feed и нужную новость.
+
+    Убеждается, что в контексте страницы списка новостей присутствует
+    news_feed и что в нём есть ожидаемая новость.
+    """
     url = reverse('news:home')
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
@@ -20,6 +27,11 @@ def test_news_list_renders_news_feed(client, news):
 
 
 def test_news_detail_page_shows_full_content(client, news):
+    """На detail-странице отображаются заголовок, текст, дата и объект новости.
+
+    Проверяется наличие заголовка, текста, корректной даты и объекта новости
+    в контексте страницы.
+    """
     url = reverse('news:detail', kwargs={'pk': news.pk})
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
@@ -33,14 +45,23 @@ def test_news_detail_page_shows_full_content(client, news):
     context_news = response.context['news']
     assert context_news.pk == news.pk, "В контекст попала не та новость"
     assert isinstance(context_news.date, date), (
-        f"Поле date должно быть типа date, а получено {type(context_news.date)}"
+        "Поле date должно быть типа date, а получено {}".format(
+            type(context_news.date)
+        )
     )
-    assert context_news.date == news.date, "Дата в контексте не совпадает с датой объекта"
+    assert context_news.date == news.date, (
+        "Дата в контексте не совпадает с датой объекта"
+    )
 
     assert 'form' not in response.context
 
 
 def test_authenticated_user_sees_comment_form_on_detail(client, news, author):
+    """Авторизованный пользователь видит форму комментария на detail-странице.
+
+    У авторизованного пользователя в контексте страницы должна быть
+    форма для добавления комментария.
+    """
     client.force_login(author)
     url = reverse('news:detail', kwargs={'pk': news.pk})
     response = client.get(url)
@@ -50,6 +71,11 @@ def test_authenticated_user_sees_comment_form_on_detail(client, news, author):
 
 
 def test_comment_appears_under_news(client, comment, news):
+    """Комментарий отображается под новостью на detail-странице.
+
+    Текст комментария и имя его автора должны присутствовать
+    в HTML-ответе страницы новости.
+    """
     url = reverse('news:detail', kwargs={'pk': news.pk})
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
@@ -60,8 +86,13 @@ def test_comment_appears_under_news(client, comment, news):
 
 
 def test_pagination_limit_via_settings(client):
-    User = get_user_model()
-    author = User.objects.create_user(username='pag_author', password='pass')
+    """Пагинация на главной странице соблюдает лимит из настроек.
+
+    Создаётся больше новостей, чем разрешено показывать на одной странице,
+    затем проверяется, что в news_feed попадает не больше лимита.
+    """
+    user_model = get_user_model()
+    user_model.objects.create_user(username='pag_author', password='pass')
 
     for i in range(15):
         News.objects.create(
@@ -79,12 +110,17 @@ def test_pagination_limit_via_settings(client):
     limit = getattr(settings, 'NEWS_COUNT_ON_HOME_PAGE', 10)
 
     assert len(news_feed) <= limit, (
-        f"На главной больше новостей, чем разрешено "
-        f"(лимит {limit}, найдено {len(news_feed)})"
+        "На главной больше новостей, чем разрешено "
+        "(лимит {}, найдено {})".format(limit, len(news_feed))
     )
 
 
 def test_own_comment_edit_page_contains_form(client, comment, author):
+    """Страница редактирования собственного комментария содержит форму.
+
+    Автор комментария должен видеть форму редактирования
+    на странице изменения своего комментария.
+    """
     client.force_login(author)
     url = reverse('news:edit', kwargs={'pk': comment.pk})
     response = client.get(url)
@@ -94,6 +130,11 @@ def test_own_comment_edit_page_contains_form(client, comment, author):
 
 
 def test_other_user_cannot_access_comment_edit(client, comment, reader):
+    """Пользователь не может редактировать чужой комментарий (404).
+
+    Читатель, пытающийся открыть страницу редактирования чужого комментария,
+    должен получить ответ 404.
+    """
     client.force_login(reader)
     url = reverse('news:edit', kwargs={'pk': comment.pk})
     response = client.get(url)

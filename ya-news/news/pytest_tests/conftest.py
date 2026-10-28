@@ -1,28 +1,31 @@
-# ya-news/news/pytest_tests/conftest.py
+"""Фикстуры для тестов приложения news."""
+
 import pytest
 from django.contrib.auth import get_user_model
 from datetime import date
 from news.models import News, Comment
 
-User = get_user_model()
-
 
 @pytest.fixture
-def author(db):
+def author():
     """Создаёт пользователя-автора."""
-    return User.objects.create_user(username='Лев Толстой', password='pass')
+    user_model = get_user_model()
+    return user_model.objects.create_user(
+        username='Автор', password='password'
+    )
 
 
 @pytest.fixture
-def reader(db):
+def reader():
     """Создаёт обычного читателя (не автора)."""
-    return User.objects.create_user(
+    user_model = get_user_model()
+    return user_model.objects.create_user(
         username='Читатель простой', password='pass'
     )
 
 
 @pytest.fixture
-def news(author, db):
+def news(author):
     """Создаёт одну тестовую новость."""
     return News.objects.create(
         title='Заголовок новости',
@@ -32,7 +35,7 @@ def news(author, db):
 
 
 @pytest.fixture
-def comment(news, author, db):
+def comment(news, author):
     """Создаёт комментарий к новости от автора."""
     return Comment.objects.create(
         news=news,
