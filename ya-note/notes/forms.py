@@ -22,7 +22,9 @@ class NoteForm(forms.ModelForm):
 
         if not slug or slug.strip() == '':
             if not title:
-                raise ValidationError('Заголовок обязателен, если не указан slug.')
+                raise ValidationError(
+                    'Заголовок обязателен, если не указан slug.'
+                )
             slug = slugify(title)[:100]
 
         qs = Note.objects.filter(slug=slug)
