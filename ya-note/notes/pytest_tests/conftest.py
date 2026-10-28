@@ -49,16 +49,13 @@ def note(author):
 
 @pytest.fixture
 def slug_for_args(note):
-    """Возвращает кортеж со slug,
-    чтобы удобно передавать в args для reverse.
-    """
+    """Возвращает кортеж со slug, чтобы удобно передавать в args для reverse."""
     return (note.slug,)
 
 
 @pytest.fixture
 def many_notes(author):
-    """Много заметок для проверки лимита и сортировки на странице списка.
-    """
+    """Много заметок для проверки лимита и сортировки на странице списка."""
     base_time = timezone.now()
     count = 15
     notes_list = [
@@ -76,9 +73,7 @@ def many_notes(author):
 
 @pytest.fixture
 def single_note(author):
-    """Ещё одна отдельная заметка
-    для detail-страницы (чтобы не зависеть от note).
-    """
+    """Ещё одна отдельная заметка для detail-страницы (чтобы не зависеть от note)."""
     return Note.objects.create(
         title='Тестовая заметка для detail',
         text='Текст для проверки detail-страницы.',
@@ -109,15 +104,13 @@ def news(author):
 
 @pytest.fixture
 def slug_for_news_args(news):
-    """Кортеж со slug новости для передачи в args reverse().
-    """
+    """Кортеж со slug новости для передачи в args reverse()."""
     return (news.slug,)
 
 
 @pytest.fixture
 def many_news(author):
-    """Много новостей для проверки лимитов и сортировки.
-    """
+    """Много новостей для проверки лимитов и сортировки."""
     base_time = timezone.now()
     count = 15
     news_list = [
@@ -135,8 +128,7 @@ def many_news(author):
 
 @pytest.fixture
 def single_news(author):
-    """Отдельная новость для detail-страницы (независимо от news).
-    """
+    """Отдельная новость для detail-страницы (независимо от news)."""
     return News.objects.create(
         title='Тестовая новость для detail',
         text='Текст для проверки detail-страницы.',
@@ -154,8 +146,7 @@ def comment_data():
 
 @pytest.fixture
 def single_comment(single_news, author):
-    """Один комментарий к новости.
-    """
+    """Один комментарий к новости."""
     return Comment.objects.create(
         news=single_news,
         author=author,

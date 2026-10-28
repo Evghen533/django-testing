@@ -1,7 +1,11 @@
 import pytest
 from django.urls import reverse
 from http import HTTPStatus
-from datetime import date
+from datetime import date, timedelta
+from news.models import News
+from django.contrib.auth import get_user_model
+from django.conf import settings
+from news.forms import CommentForm
 
 pytestmark = pytest.mark.django_db
 
@@ -29,8 +33,7 @@ def test_news_detail_page_shows_full_content(client, news):
     context_news = response.context['news']
     assert context_news.pk == news.pk, "В контекст попала не та новость"
     assert isinstance(context_news.date, date), (
-        f"Поле date должно быть типа date,"
-        "а получено {type(context_news.date)}"
+        f"Поле date должно быть типа date, а получено {type(context_news.date)}"
     )
     assert context_news.date == news.date, "Дата в контексте не совпадает с датой объекта"
 
@@ -43,7 +46,6 @@ def test_authenticated_user_sees_comment_form_on_detail(client, news, author):
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
     assert 'form' in response.context
-    from news.forms import CommentForm
     assert isinstance(response.context['form'], CommentForm)
 
 
@@ -58,10 +60,6 @@ def test_comment_appears_under_news(client, comment, news):
 
 
 def test_pagination_limit_via_settings(client):
-    from news.models import News
-    from django.contrib.auth import get_user_model
-    from datetime import date, timedelta
-
     User = get_user_model()
     author = User.objects.create_user(username='pag_author', password='pass')
 
@@ -78,12 +76,11 @@ def test_pagination_limit_via_settings(client):
     assert 'news_feed' in response.context
 
     news_feed = response.context['news_feed']
-    from django.conf import settings
     limit = getattr(settings, 'NEWS_COUNT_ON_HOME_PAGE', 10)
 
     assert len(news_feed) <= limit, (
-        f"На главной больше новостей, чем разрешено"
-        "(лимит {limit}, найдено {len(news_feed)})"
+        f"На главной больше новостей, чем разрешено "
+        f"(лимит {limit}, найдено {len(news_feed)})"
     )
 
 
@@ -92,8 +89,6 @@ def test_own_comment_edit_page_contains_form(client, comment, author):
     url = reverse('news:edit', kwargs={'pk': comment.pk})
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
-
-    from news.forms import CommentForm
     assert 'form' in response.context
     assert isinstance(response.context['form'], CommentForm)
 
