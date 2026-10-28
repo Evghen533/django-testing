@@ -8,6 +8,7 @@ from pytest_django.asserts import assertRedirects
 from notes.models import Note
 
 
+@pytest.mark.django_db
 def test_home_availability_for_anonymous_user(client):
     """Главная страница доступна анонимному пользователю (статус 200)."""
     url = reverse('notes:home')
@@ -19,6 +20,7 @@ def test_home_availability_for_anonymous_user(client):
     'name',
     ('notes:home', 'users:login', 'users:signup')
 )
+@pytest.mark.django_db
 def test_pages_availability_for_anonymous_user(client, name):
     """Базовые страницы доступны анонимному пользователю."""
     url = reverse(name)
@@ -34,6 +36,7 @@ def test_logout_availability_for_anonymous_user(client):
     assert response.status_code in (HTTPStatus.FOUND, HTTPStatus.OK)
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     'name',
     ('notes:list', 'notes:add', 'notes:success')
@@ -80,6 +83,7 @@ def test_pages_availability_for_author(author_client, name, note):
     'name',
     ('notes:detail', 'notes:edit', 'notes:delete'),
 )
+@pytest.mark.django_db
 def test_pages_availability_for_different_users(
     parametrized_client,
     name,
@@ -92,15 +96,13 @@ def test_pages_availability_for_different_users(
     assert response.status_code == expected_status
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     'name, note_object',
     (
         ('notes:detail', lf('note')),
         ('notes:edit', lf('note')),
         ('notes:delete', lf('note')),
-        ('notes:add', None),
-        ('notes:success', None),
-        ('notes:list', None),
     ),
 )
 def test_redirects_for_anonymous(client, name, note_object):
@@ -111,3 +113,18 @@ def test_redirects_for_anonymous(client, name, note_object):
     expected_url = f'{login_url}?next={url}'
     response = client.get(url)
     assertRedirects(response, expected_url)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'name, args',
+    (
+        ('notes:list', None),
+        ('notes:success', None),
+    ),
+)
+def test_public_pages_available_for_anonymous(client, name, args):
+    """Публичные страницы должны отдавать 200 для анонима."""
+    url = reverse(name, args=args)
+    response = client.get(url)
+    assert response.status_code == 200

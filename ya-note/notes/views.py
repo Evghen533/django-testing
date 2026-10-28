@@ -1,66 +1,92 @@
+from django.shortcuts import get_object_or_404
+from django.http import Http404
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import (
+    ListView,
+    DetailView,
+    CreateView,
+    UpdateView,
+    DeleteView,
+    TemplateView,
+)
 from django.urls import reverse_lazy
-from django.views import generic
-from .forms import NoteForm
 from .models import Note
+from .forms import NoteForm
 
 
-class Home(generic.ListView):
-    """Список заметок на главной странице."""
+class Home(ListView):
+    """Главная страница: список заметок (публичная)."""
     model = Note
-    template_name = 'notes/home.html'
-    context_object_name = 'object_list'
+    template_name = 'notes/list.html'
+    context_object_name = 'notes'
     paginate_by = 10
 
-
-class NoteSuccess(LoginRequiredMixin, generic.TemplateView):
-    """Страница успешного выполнения операции."""
-    template_name = 'notes/success.html'
+    def get_queryset(self):
+        return Note.objects.all().order_by('-pub_date')
 
 
-class NoteBase(LoginRequiredMixin):
+class NotesList(ListView):
+    """Страница списка заметок (notes/) — дублирует логику Home, если нужно отдельное имя URL."""
     model = Note
-    success_url = reverse_lazy('notes:success')
+    template_name = 'notes/list.html'
+    context_object_name = 'notes'
+    paginate_by = 10
 
     def get_queryset(self):
-        """Пользователь может работать только со своими заметками."""
-        return self.model.objects.filter(author=self.request.user)
+        return Note.objects.all().order_by('-pub_date')
 
 
-class NoteCreate(NoteBase, generic.CreateView):
-    """Добавление заметки."""
-    template_name = 'notes/form.html'
+class NoteDetail(LoginRequiredMixin, DetailView):
+    model = Note
+    template_name = 'notes/detail.html'
+    context_object_name = 'note'
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset=queryset)
+        if obj.author != self.request.user:
+            raise Http404("Заметка не найдена")
+        return obj
+
+
+class NoteCreate(LoginRequiredMixin, CreateView):
+    """Создание заметки (только для авторизованных)."""
+    model = Note
     form_class = NoteForm
+    template_name = 'notes/form.html'
+    success_url = reverse_lazy('notes:success')
 
     def form_valid(self, form):
-        new_note = form.save(commit=False)
-        new_note.author = self.request.user
-        new_note.save()
+        form.instance.author = self.request.user
         return super().form_valid(form)
 
 
-class NoteUpdate(NoteBase, generic.UpdateView):
-    """Редактирование заметки."""
-    template_name = 'notes/form.html'
-    form_class = NoteForm
-
-
-class NoteDelete(NoteBase, generic.DeleteView):
-    """Удаление заметки."""
-    template_name = 'notes/delete.html'
-
-
-class NotesList(NoteBase, generic.ListView):
-    """Список всех заметок пользователя."""
-    template_name = 'notes/list.html'
-
-
-class NoteDetail(generic.DetailView):
-    """Заметка подробно (публичная страница)."""
+class NoteUpdate(LoginRequiredMixin, UpdateView):
     model = Note
-    template_name = 'notes/detail.html'
+    form_class = NoteForm
+    template_name = 'notes/form.html'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['comments'] = self.object.comments.order_by('created')
-        return context
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset=queryset)
+        if obj.author != self.request.user:
+            raise Http404("Заметка не найдена")
+        return obj
+
+    def get_success_url(self):
+        return reverse_lazy('notes:detail', kwargs={'slug': self.object.slug})
+
+
+class NoteDelete(LoginRequiredMixin, DeleteView):
+    model = Note
+    template_name = 'notes/delete.html'
+    success_url = reverse_lazy('notes:list')
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset=queryset)
+        if obj.author != self.request.user:
+            raise Http404("Заметка не найдена")
+        return obj
+
+
+class NoteSuccess(TemplateView):
+    """Страница успеха после создания заметки."""
+    template_name = 'notes/success.html'
