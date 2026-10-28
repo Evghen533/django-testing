@@ -44,7 +44,7 @@ def test_not_unique_slug(author_client, note, form_data):
 
 def test_empty_slug(author_client, form_data):
     url = reverse('notes:add')
-    form_data.pop('slug')
+    form_data['slug'] = ''
     response = author_client.post(url, data=form_data)
     assertRedirects(response, reverse('notes:success'))
     assert Note.objects.count() == 1

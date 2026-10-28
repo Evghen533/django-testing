@@ -65,6 +65,7 @@ class NoteUpdate(LoginRequiredMixin, UpdateView):
     model = Note
     form_class = NoteForm
     template_name = 'notes/form.html'
+    success_url = reverse_lazy('notes:success')
 
     def get_object(self, queryset=None):
         obj = super().get_object(queryset=queryset)
@@ -72,14 +73,11 @@ class NoteUpdate(LoginRequiredMixin, UpdateView):
             raise Http404("Заметка не найдена")
         return obj
 
-    def get_success_url(self):
-        return reverse_lazy('notes:detail', kwargs={'slug': self.object.slug})
-
 
 class NoteDelete(LoginRequiredMixin, DeleteView):
     model = Note
     template_name = 'notes/delete.html'
-    success_url = reverse_lazy('notes:list')
+    success_url = reverse_lazy('notes:success')
 
     def get_object(self, queryset=None):
         obj = super().get_object(queryset=queryset)

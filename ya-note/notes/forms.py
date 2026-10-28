@@ -16,14 +16,20 @@ class NoteForm(forms.ModelForm):
         fields = ('title', 'text', 'slug')
 
     def clean_slug(self):
-        """Обрабатывает случай, если slug не уникален."""
         cleaned_data = super().clean()
         slug = cleaned_data.get('slug')
-        if not slug:
-            title = cleaned_data.get('title')
+        title = cleaned_data.get('title')
+
+        if not slug or slug.strip() == '':
+            if not title:
+                raise ValidationError('Заголовок обязателен, если не указан slug.')
             slug = slugify(title)[:100]
-        if Note.objects.filter(
-                slug=slug
-        ).exclude(id=self.instance.pk).exists():
-            raise ValidationError(slug + WARNING)
+
+        qs = Note.objects.filter(slug=slug)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(id=self.instance.pk)
+
+        if qs.exists():
+            raise ValidationError(f'{slug}{WARNING}')
+
         return slug

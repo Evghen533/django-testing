@@ -60,7 +60,7 @@ def many_notes(author):
             text='Просто текст для теста.',
             slug=f'note-slug-{i}',
             author=author,
-            created_at=base_time - timedelta(days=i)
+            pub_date=base_time - timedelta(days=i)
         )
         for i in range(count)
     ]
