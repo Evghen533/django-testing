@@ -178,3 +178,6 @@ coverage.xml
 *.cover
 
 .vscode/
+
+ya-news/
+ya-note/
