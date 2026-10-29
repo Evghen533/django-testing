@@ -1,10 +1,14 @@
+"""Настройки проекта ya-note."""
+
 from pathlib import Path
 
 from django.urls import reverse_lazy
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-yipnj$#j!ajarq%k55z4kuf3x79)91h0h42o9!1ho(z=!%mt=#'
+SECRET_KEY = (
+    'django-insecure-yipnj$#j!ajarq%k55z4kuf3x79)91h0h42o9!1ho(z=!%mt=#'
+)
 
 DEBUG = False
 
@@ -62,10 +66,14 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'NAME': (
+            'django.contrib.auth.password_validation.MinimumLengthValidator',
+        ),
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'NAME': (
+            'django.contrib.auth.password_validation.NumericPasswordValidator',
+        ),
     },
 ]
 
