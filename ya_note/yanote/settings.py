@@ -1,4 +1,4 @@
-"""Настройки проекта ya-note."""
+"""Настройки проекта ya_note."""
 
 from pathlib import Path
 
