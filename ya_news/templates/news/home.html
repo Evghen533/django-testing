@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-  {% for news in object_list %}
+  {% for news in news_feed %}
     <div class="mt-3">
       <h3><a href="{% url 'news:detail' news.pk %}">{{ news.title }}</a></h3>
       <div><small>{{ news.date }}</small></div>
