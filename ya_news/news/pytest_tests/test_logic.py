@@ -30,7 +30,7 @@ def test_news_list_sorted_by_date_desc(client):
     url = reverse('news:home')
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
-    assert 'news_feed' in response.context
+    assert 'news_list' in response.context
 
     news_feed = list(response.context['news_feed'])
 
