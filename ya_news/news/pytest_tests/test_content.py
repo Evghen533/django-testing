@@ -21,7 +21,7 @@ def test_news_list_renders_news_feed(client, news):
     url = reverse('news:home')
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
-    assert 'news_list' in response.context
+    assert 'news_feed' in response.context
     news_feed = response.context['news_feed']
     assert news in news_feed
 
@@ -104,7 +104,7 @@ def test_pagination_limit_via_settings(client):
     url = reverse('news:home')
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
-    assert 'news_list' in response.context
+    assert 'news_feed' in response.context
 
     news_feed = response.context['news_feed']
     limit = getattr(settings, 'NEWS_COUNT_ON_HOME_PAGE', 10)
