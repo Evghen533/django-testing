@@ -7,10 +7,13 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+
 class LogicTests(TestCase):
     def setUp(self):
-        # Только пользователи, без заметок
-        self.author = User.objects.create_user(username='author', password='123')
+        self.author = User.objects.create_user(
+            username='author',
+            password='123'
+        )
         self.other = User.objects.create_user(username='other', password='123')
 
         self.form_data = {
@@ -53,11 +56,15 @@ class LogicTests(TestCase):
         data['slug'] = existing_note.slug
         response = self.client.post(url, data=data)
 
-        # Проверяем, что в ошибке формы есть нужная фраза
         form_errors = response.context['form'].errors.get('slug', [])
-        error_message_fragment = 'такой slug уже существует, придумайте уникальное значение!'
+        error_message_fragment = (
+            'такой slug уже существует, придумайте уникальное значение!'
+        )
         found = any(error_message_fragment in err for err in form_errors)
-        self.assertTrue(found, f"Не найдена фраза в ошибке: {error_message_fragment}")
+        self.assertTrue(
+            found,
+            f"Не найдена фраза в ошибке: {error_message_fragment}"
+        )
         self.assertEqual(Note.objects.count(), 1)
 
     def test_empty_slug_auto_generated(self):

@@ -6,14 +6,14 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+
 class ContentTests(TestCase):
     def setUp(self):
-        # Создаём пользователя правильно — через модель
-        self.user = User.objects.create_user(username='testuser', password='123')
-        # Логиним его в клиент
+        self.user = User.objects.create_user(
+            username='testuser', password='123'
+        )
         self.client.force_login(self.user)
 
-        # Создаём 15 заметок от этого пользователя
         for i in range(15):
             Note.objects.create(
                 title=f'Note {i}',
@@ -23,7 +23,7 @@ class ContentTests(TestCase):
             )
 
     def test_notes_list_limit(self):
-        """На странице списка должно отображаться ровно NOTES_PER_PAGE заметок."""
+        """Список содержит NOTES_PER_PAGE заметок."""
         url = reverse('notes:list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)

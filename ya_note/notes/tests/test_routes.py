@@ -6,9 +6,13 @@ from notes.models import Note
 
 User = get_user_model()
 
+
 class RoutesTests(TestCase):
     def setUp(self):
-        self.author = User.objects.create_user(username='author', password='123')
+        self.author = User.objects.create_user(
+            username='author',
+            password='123'
+        )
         self.note = None
 
     def test_home_availability_for_anonymous(self):
@@ -50,7 +54,6 @@ class RoutesTests(TestCase):
     def test_access_control_for_other_user(self):
         other = User.objects.create_user(username='other', password='123')
         self.client.force_login(other)
-        # note должен быть создан до этого теста, чтобы у него был slug
         if self.note is None:
             self.note = Note.objects.create(
                 title='Test2',
@@ -65,7 +68,6 @@ class RoutesTests(TestCase):
 
     def test_redirect_for_anonymous_on_protected_pages(self):
         login_url = reverse('users:login')
-        # Сначала создадим заметку, чтобы был slug для detail/edit/delete
         self.note = Note.objects.create(
             title='Protected',
             slug='protected',
@@ -73,7 +75,13 @@ class RoutesTests(TestCase):
             author=self.author
         )
 
-        for name in ['notes:detail', 'notes:edit', 'notes:delete', 'notes:add']:
+        protected_names = [
+            'notes:detail',
+            'notes:edit',
+            'notes:delete',
+            'notes:add',
+        ]
+        for name in protected_names:
             if name in ['notes:detail', 'notes:edit', 'notes:delete']:
                 url = reverse(name, args=(self.note.slug,))
             else:
