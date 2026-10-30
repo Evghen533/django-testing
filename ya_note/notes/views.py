@@ -17,7 +17,6 @@ class Home(ListView):
     """Главная страница: список заметок (публичная)."""
     model = Note
     template_name = 'notes/list.html'
-    context_object_name = 'notes'
     paginate_by = 10
 
     def get_queryset(self):
@@ -30,7 +29,6 @@ class NotesList(ListView):
     """
     model = Note
     template_name = 'notes/list.html'
-    context_object_name = 'notes'
     paginate_by = 10
 
     def get_queryset(self):
