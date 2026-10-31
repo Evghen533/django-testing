@@ -87,7 +87,6 @@ class CommentBase(LoginRequiredMixin):
         self.object = self.get_object()
 
         if self.object.author != request.user:
-            from django.http import HttpResponseForbidden
             return HttpResponseForbidden()
 
         return super().dispatch(request, *args, **kwargs)
