@@ -34,6 +34,7 @@ def reader():
 @pytest.fixture
 def news(author):
     """Создаёт одну тестовую новость."""
+    # Если в модели News есть поле author, обязательно его заполняем
     return News.objects.create(
         title='Заголовок новости',
         text='Текст новости для тестов контента',
