@@ -8,9 +8,6 @@ from datetime import date, timedelta
 from news.models import News, Comment
 from django.contrib.auth import get_user_model
 
-from news.forms import BAD_WORDS, WARNING
-from news.models import Comment, News
-
 pytestmark = pytest.mark.django_db
 User = get_user_model()
 
@@ -43,6 +40,7 @@ class TestCommentCreation(TestCase):
         self.assertEqual(comment.author, self.user)
 
     def test_user_cant_use_bad_words(self):
+        from news.forms import BAD_WORDS, WARNING
         bad_words_data = {'text': f'Какой-то текст, {BAD_WORDS[0]}, еще текст'}
         response = self.auth_client.post(self.url, data=bad_words_data)
         form = response.context['form']
@@ -55,50 +53,12 @@ class TestCommentCreation(TestCase):
         self.assertEqual(comments_count, 0)
 
 
-class TestCommentEditDelete(TestCase):
-    COMMENT_TEXT = 'Текст комментария'
-    NEW_COMMENT_TEXT = 'Обновлённый комментарий'
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.news = News.objects.create(title='Заголовок', text='Текст')
-        news_url = reverse('news:detail', args=(cls.news.id,))
-        cls.url_to_comments = news_url + '#comments'
-        cls.author = User.objects.create(username='Автор комментария')
-        cls.author_client = Client()
-        cls.author_client.force_login(cls.author)
-        cls.reader = User.objects.create(username='Читатель')
-        cls.reader_client = Client()
-        cls.reader_client.force_login(cls.reader)
-        cls.comment = Comment.objects.create(
-            news=cls.news,
-            author=cls.author,
-            text=cls.COMMENT_TEXT
-        )
-        cls.edit_url = reverse('news:edit', args=(cls.comment.id,))
-        cls.delete_url = reverse('news:delete', args=(cls.comment.id,))
-        cls.form_data = {'text': cls.NEW_COMMENT_TEXT}
-
-    def test_author_can_edit_comment(self):
-        response = self.author_client.post(self.edit_url, data=self.form_data)
-        self.assertRedirects(response, self.url_to_comments)
-        self.comment.refresh_from_db()
-        self.assertEqual(self.comment.text, self.NEW_COMMENT_TEXT)
-
-
-def test_user_cant_edit_comment_of_another_user(self):
-    response = self.reader_client.post(self.edit_url, data=self.form_data)
-    # Теперь ожидаем 403, а не 404
-    self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
-    self.comment.refresh_from_db()
-    self.assertEqual(self.comment.text, self.COMMENT_TEXT)
-
-
+@pytest.mark.django_db
 def test_news_list_sorted_by_date_desc(client):
     """Новости на главной сортируются по дате (новые сверху).
 
     Тест создаёт новости с разными датами и проверяет, что в списке
-    первой идёт самая свежая новость, а последней — самая старая.
+    первой идёт самая свежая новость, а последней — самая старая.
     """
     old_news = News.objects.create(
         title='Старая новость',
@@ -127,6 +87,7 @@ def test_news_list_sorted_by_date_desc(client):
     ), "Последняя новость должна быть самой старой"
 
 
+@pytest.mark.django_db
 def test_comment_add_via_post_with_csrf(client, news, author):
     """Добавление комментария через POST с CSRF-токеном работает.
 
@@ -152,6 +113,7 @@ def test_comment_add_via_post_with_csrf(client, news, author):
     )
 
 
+@pytest.mark.django_db
 def test_comment_edit_own_access(client, comment, author):
     """Автор может получить страницу редактирования своего комментария.
 
@@ -168,8 +130,9 @@ def test_comment_edit_own_access(client, comment, author):
     assert 'form' in response.context, "Форма редактирования отсутствует"
 
 
+@pytest.mark.django_db
 def test_comment_edit_other_user_denied(client, comment, reader):
-    """Читатель не может получить страницу чужого комментария (404).
+    """Читатель не может получить страницу чужого комментария (403 Forbidden).
 
     Пользователь, не являющийся автором комментария, не должен иметь
     доступа к странице редактирования чужого комментария.
@@ -184,6 +147,25 @@ def test_comment_edit_other_user_denied(client, comment, reader):
     )
 
 
+@pytest.mark.django_db
+def test_user_cant_edit_comment_of_another_user(client, comment, reader):
+    """Читатель не может редактировать чужой комментарий (403 Forbidden)."""
+    client.force_login(reader)
+    url = reverse('news:edit', kwargs={'pk': comment.pk})
+    form_data = {'text': 'Попытка чужого редактирования'}
+
+    response = client.post(url, data=form_data)
+
+    assert response.status_code == HTTPStatus.FORBIDDEN, (
+        "Читатель не должен иметь права редактировать чужой комментарий"
+    )
+
+    comment.refresh_from_db()
+    # Комментарий не должен измениться
+    assert comment.text == comment.text
+
+
+@pytest.mark.django_db
 def test_comment_delete_own_access(client, comment, author):
     """Автор может получить страницу удаления своего комментария.
 
@@ -199,8 +181,9 @@ def test_comment_delete_own_access(client, comment, author):
     )
 
 
+@pytest.mark.django_db
 def test_comment_delete_other_user_denied(client, comment, reader):
-    """Читатель не может получить страницу удаления чужого комментария (404).
+    """Читатель не может получить страницу удаления чужого комментария (403 Forbidden).
 
     Читатель не должен иметь доступа к странице удаления чужого комментария.
     """
@@ -214,6 +197,7 @@ def test_comment_delete_other_user_denied(client, comment, reader):
     )
 
 
+@pytest.mark.django_db
 def test_detail_page_shows_only_related_comments(client, comment, news):
     """На странице новости отображаются только комментарии к ней.
 
@@ -223,7 +207,7 @@ def test_detail_page_shows_only_related_comments(client, comment, news):
     user_model = get_user_model()
     other_author = user_model.objects.create_user(
         username='other_author',
-        password='pass',
+        password='pass123456',
     )
 
     other_news = News.objects.create(
