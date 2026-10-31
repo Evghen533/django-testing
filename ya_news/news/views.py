@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views import generic
@@ -83,15 +84,24 @@ class CommentBase(LoginRequiredMixin):
     """Базовый класс для работы с комментариями."""
     model = Comment
 
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+
+        if isinstance(response, HttpResponseRedirect):
+            return response
+
+        self.object = self.get_object()
+
+        if self.object.author != self.request.user:
+            return HttpResponseForbidden()
+
+        return response
+
     def get_success_url(self):
         comment = self.get_object()
         return reverse(
             'news:detail', kwargs={'pk': comment.news.pk}
         ) + '#comments'
-
-    def get_queryset(self):
-        """Пользователь может работать только со своими комментариями."""
-        return self.model.objects.filter(author=self.request.user)
 
 
 class CommentUpdate(CommentBase, generic.UpdateView):
