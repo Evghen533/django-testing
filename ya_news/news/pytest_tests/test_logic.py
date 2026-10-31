@@ -150,6 +150,8 @@ def test_comment_edit_other_user_denied(client, comment, reader):
 @pytest.mark.django_db
 def test_user_cant_edit_comment_of_another_user(client, comment, reader):
     """Читатель не может редактировать чужой комментарий (403 Forbidden)."""
+    old_text = comment.text
+
     client.force_login(reader)
     url = reverse('news:edit', kwargs={'pk': comment.pk})
     form_data = {'text': 'Попытка чужого редактирования'}
@@ -161,8 +163,7 @@ def test_user_cant_edit_comment_of_another_user(client, comment, reader):
     )
 
     comment.refresh_from_db()
-    # Комментарий не должен измениться
-    assert comment.text == comment.text
+    assert comment.text == old_text, "Комментарий не должен был измениться"
 
 
 @pytest.mark.django_db

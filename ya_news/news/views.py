@@ -85,17 +85,12 @@ class CommentBase(LoginRequiredMixin):
     model = Comment
 
     def dispatch(self, request, *args, **kwargs):
-        response = super().dispatch(request, *args, **kwargs)
-
-        if isinstance(response, HttpResponseRedirect):
-            return response
-
         self.object = self.get_object()
 
         if self.object.author != self.request.user:
             return HttpResponseForbidden()
 
-        return response
+        return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
         comment = self.get_object()
