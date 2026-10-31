@@ -29,7 +29,7 @@ def test_public_pages_availability(client):
     for name, args in urls:
         url = reverse(name, args=args)
         response = client.get(url)
-        assert response.status_code == HTTPStatus.OK, f"Страница {name} недоступна"
+        assert response.status_code == HTTPStatus.OK, f"{name} недоступна"
 
 
 def test_comment_edit_delete_permissions(client, comment, author, reader):
@@ -48,13 +48,13 @@ def test_comment_edit_delete_permissions(client, comment, author, reader):
     for name, obj_id in actions:
         url = reverse(name, args=(obj_id,))
         response = client.get(url)
-        assert response.status_code == HTTPStatus.OK, f"Автор не может получить доступ к {name}"
+        assert response.status_code == HTTPStatus.OK
 
     client.force_login(reader)
     for name, obj_id in actions:
         url = reverse(name, args=(obj_id,))
         response = client.get(url)
-        assert response.status_code == HTTPStatus.FORBIDDEN, f"Читатель не должен иметь доступ к {name}"
+        assert response.status_code == HTTPStatus.FORBIDDEN
 
 
 def test_redirect_for_anonymous_on_protected_pages(client, comment):
@@ -76,6 +76,6 @@ def test_redirect_for_anonymous_on_protected_pages(client, comment):
 
         response = client.get(url)
 
-        assert response.status_code == HTTPStatus.FOUND, f"Не было редиректа для {name}"
-        assert response.has_header('Location'), "Отсутствует заголовок Location"
-        assert response.url == expected_redirect, f"Неверный URL редиректа для {name}"
+        assert response.status_code == HTTPStatus.FOUND
+        assert response.has_header('Location')
+        assert response.url == expected_redirect

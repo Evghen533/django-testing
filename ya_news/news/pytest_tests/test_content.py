@@ -44,7 +44,7 @@ def sorted_comments(news, author):
 
 
 def test_news_count_on_home(client, many_news):
-    """На главной странице отображается ровно NEWS_COUNT_ON_HOME_PAGE новостей."""
+    """На главной странице ровно NEWS_COUNT_ON_HOME_PAGE новостей."""
     url = reverse('news:home')
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
@@ -66,7 +66,7 @@ def test_news_order_on_home(client, many_news):
 
 
 def test_comments_order_on_detail(client, news, sorted_comments):
-    """Комментарии на странице новости отсортированы по времени: старые сверху."""
+    """Комментарии на странице новости: старые сверху."""
     url = reverse('news:detail', args=(news.id,))
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
