@@ -183,7 +183,8 @@ def test_comment_delete_own_access(client, comment, author):
 
 @pytest.mark.django_db
 def test_comment_delete_other_user_denied(client, comment, reader):
-    """Читатель не может получить страницу удаления чужого комментария (403 Forbidden).
+    """Читатель не может получить страницу удаления чужого комментария
+    (403 Forbidden).
 
     Читатель не должен иметь доступа к странице удаления чужого комментария.
     """
