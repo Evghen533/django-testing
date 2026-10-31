@@ -1,9 +1,16 @@
 """Фикстуры для тестов приложения news."""
 
+import os
+import django
 import pytest
 from django.contrib.auth import get_user_model
 from datetime import date
-from news.models import News, Comment
+from django.test import Client
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'yanews.settings')
+django.setup()
+
+from news.models import News, Comment # noqa: E402
 
 
 @pytest.fixture
@@ -19,7 +26,6 @@ def author():
 def reader():
     """Создаёт обычного читателя (не автора)."""
     user_model = get_user_model()
-    # Пароль чуть длиннее, чтобы не споткнуться о валидацию, если она включена
     return user_model.objects.create_user(
         username='Читатель простой', password='pass123456'
     )
@@ -48,7 +54,6 @@ def comment(news, author):
 @pytest.fixture
 def client():
     """Клиент для запросов в тестах Django."""
-    from django.test import Client
     return Client()
 
 
