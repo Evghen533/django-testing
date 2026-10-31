@@ -2,7 +2,7 @@
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponseForbidden
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views import generic
@@ -99,30 +99,29 @@ class CommentBase(LoginRequiredMixin):
 
     model = Comment
 
+    def get_object(self, queryset=None):
+        """
+        Переопределяем get_object, чтобы проверить права ДО того,
+        как UpdateView/DeleteView начнёт работу.
+        """
+        obj = super().get_object(queryset)
+
+        if obj.author != self.request.user:
+            raise PermissionDenied()
+
+        return obj
+
     def dispatch(self, request, *args, **kwargs):
         """
-        Проверяет авторизацию и права доступа перед обработкой запроса.
-
-        1. Сначала выполняется стандартная обработка LoginRequiredMixin.
-           Если пользователь не авторизован — сразу редирект (302).
-        2. Если авторизован, проверяется, является ли он автором комментария.
-           Если нет — возвращается 403.
-        3. Иначе запрос передаётся дальше (UpdateView/DeleteView).
+        Сначала проверяем авторизацию через LoginRequiredMixin.
+        Если пользователь не авторизован — будет редирект (302).
+        Дальше логика уже контролируется через get_object.
         """
-        response = super().dispatch(request, *args, **kwargs)
-
-        if response.status_code == 302:
-            return response
-
-        self.object = self.get_object()
-        if self.object.author != request.user:
-            return HttpResponseForbidden()
-
-        return response
+        return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
         """URL детальной страницы новости с якорем на комментарии."""
-        comment = self.get_object()
+        comment = self.object
         base_url = reverse('news:detail', kwargs={'pk': comment.news.pk})
         return f'{base_url}#comments'
 
