@@ -58,8 +58,7 @@ def test_comment_edit_delete_permissions(client, comment, author, reader):
 
 
 def test_redirect_for_anonymous_on_protected_pages(client, comment):
-    """
-    Анонимные пользователи перенаправляются на страницу входа."""
+    """Анонимные пользователи перенаправляются на страницу входа."""
     login_url = reverse('users:login')
     actions = [
         ('news:edit', comment.id),
