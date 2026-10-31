@@ -19,8 +19,9 @@ def author():
 def reader():
     """Создаёт обычного читателя (не автора)."""
     user_model = get_user_model()
+    # Пароль чуть длиннее, чтобы не споткнуться о валидацию, если она включена
     return user_model.objects.create_user(
-        username='Читатель простой', password='pass'
+        username='Читатель простой', password='pass123456'
     )
 
 
@@ -42,6 +43,13 @@ def comment(news, author):
         author=author,
         text='Комментарий к новости',
     )
+
+
+@pytest.fixture
+def client():
+    """Клиент для запросов в тестах Django."""
+    from django.test import Client
+    return Client()
 
 
 @pytest.fixture
