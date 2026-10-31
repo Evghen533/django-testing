@@ -1,5 +1,3 @@
-"""Тесты маршрутов и доступности страниц приложения news."""
-
 import pytest
 from http import HTTPStatus
 from django.urls import reverse
@@ -8,91 +6,76 @@ pytestmark = pytest.mark.django_db
 
 
 def test_home_page(client):
-    """Главная страница должна возвращать 200 OK.
-
-    Проверка, что маршрут главной страницы корректно обрабатывается
-    и возвращает успешный HTTP-ответ.
-    """
+    """Главная страница должна возвращать 200 OK."""
     url = reverse('news:home')
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
 
 def test_detail_page(client, news):
-    """Detail-страница новости должна возвращать 200 OK.
-
-    Убеждаемся, что страница конкретной новости доступна и возвращает
-    успешный HTTP-ответ.
-    """
+    """Detail-страница новости должна возвращать 200 OK."""
     url = reverse('news:detail', args=(news.id,))
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
 
-def test_pages_availability(client, news):
-    """Основные страницы приложения должны быть доступны.
-
-    Проверяются несколько ключевых маршрутов (главная, новость,
-    вход, регистрация)
-    на доступность и возврат статуса 200.
-    """
+def test_public_pages_availability(client):
+    """Публичные страницы (главная, вход, регистрация) должны быть доступны."""
     urls = [
         ('news:home', None),
-        ('news:detail', (news.id,)),
         ('users:login', None),
         ('users:signup', None),
     ]
     for name, args in urls:
         url = reverse(name, args=args)
         response = client.get(url)
-        msg = "Страница {} недоступна".format(name)
-        assert response.status_code == HTTPStatus.OK, msg
+        assert response.status_code == HTTPStatus.OK, f"Страница {name} недоступна"
 
 
-def test_availability_for_comment_edit_and_delete(
-    client, comment, author, reader
-):
-    """Права доступа на редактирование/удаление работают корректно.
-
-    Для автора комментария ожидается статус 200, для обычного читателя — 404.
-    Проверяются оба действия: редактирование и удаление.
+def test_comment_edit_delete_permissions(client, comment, author, reader):
     """
-    users_statuses = [
-        (author, HTTPStatus.OK),
-        (reader, HTTPStatus.NOT_FOUND),
+    Проверка прав доступа к редактированию и удалению комментария.
+
+    Автор: 200 OK (доступ к форме).
+    Другой пользователь: 403 Forbidden (ресурс существует, но нет прав).
+    """
+    actions = [
+        ('news:edit', comment.id),
+        ('news:delete', comment.id),
     ]
-    for user, status in users_statuses:
-        client.force_login(user)
-        for name in ('news:edit', 'news:delete'):
-            url = reverse(name, args=(comment.id,))
-            response = client.get(url)
-            msg = (
-                "Для пользователя {} и действия {} ожидали {}, "
-                "но получили {}".format(
-                    user.username,
-                    name,
-                    status,
-                    response.status_code,
-                )
-            )
-            assert response.status_code == status, msg
+
+    client.force_login(author)
+    for name, obj_id in actions:
+        url = reverse(name, args=(obj_id,))
+        response = client.get(url)
+        assert response.status_code == HTTPStatus.OK, f"Автор не может получить доступ к {name}"
+
+    client.force_login(reader)
+    for name, obj_id in actions:
+        url = reverse(name, args=(obj_id,))
+        response = client.get(url)
+        assert response.status_code == HTTPStatus.FORBIDDEN, f"Читатель не должен иметь доступ к {name}"
 
 
-def test_redirect_for_anonymous_client(client, comment):
-    """Анонимные пользователи перенаправляются на вход при действиях.
+def test_redirect_for_anonymous_on_protected_pages(client, comment):
+    """
+    Анонимные пользователи перенаправляются на страницу входа.
 
-    При попытке доступа к страницам редактирования/удаления без авторизации
-    ожидается редирект на страницу входа с корректным next-параметром.
+    Проверяем, что при попытке доступа к защищённым страницам происходит редирект
+    на login с параметром next.
     """
     login_url = reverse('users:login')
-    for name in ('news:edit', 'news:delete'):
-        url = reverse(name, args=(comment.id,))
-        redirect_url = "{0}?next={1}".format(login_url, url)
+    actions = [
+        ('news:edit', comment.id),
+        ('news:delete', comment.id),
+    ]
+
+    for name, obj_id in actions:
+        url = reverse(name, args=(obj_id,))
+        expected_redirect = f"{login_url}?next={url}"
+
         response = client.get(url)
-        msg_redirect = "Не было редиректа для {}".format(name)
-        assert response.status_code == 302, msg_redirect
-        msg_url = "Ожидался редирект на {}, но был на {}".format(
-            redirect_url,
-            response.url,
-        )
-        assert response.url == redirect_url, msg_url
+
+        assert response.status_code == HTTPStatus.FOUND, f"Не было редиректа для {name}"
+        assert response.has_header('Location'), "Отсутствует заголовок Location"
+        assert response.url == expected_redirect, f"Неверный URL редиректа для {name}"

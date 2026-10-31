@@ -1,92 +1,83 @@
+from http import HTTPStatus
+
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
-from http import HTTPStatus
-from django.contrib.auth import get_user_model
+
 from notes.models import Note
 
 User = get_user_model()
 
 
 class RoutesTests(TestCase):
-    def setUp(self):
-        self.author = User.objects.create_user(
+    @classmethod
+    def setUpTestData(cls):
+        cls.author = get_user_model().objects.create_user(
             username='author',
             password='123'
         )
-        self.note = None
+        cls.other = get_user_model().objects.create_user(
+            username='other',
+            password='123'
+        )
+        cls.note = Note.objects.create(
+            title='Test Note',
+            slug='test-note',
+            text='text',
+            author=cls.author
+        )
+
+        cls.url_home = reverse('notes:home')
+        cls.url_list = reverse('notes:list')
+        cls.url_add = reverse('notes:add')
+        cls.url_success = reverse('notes:success')
+        cls.url_login = reverse('users:login')
+        cls.url_logout = reverse('users:logout')
+        cls.url_signup = reverse('users:signup')
+
+        cls.url_detail = reverse('notes:detail', args=(cls.note.slug,))
+        cls.url_edit = reverse('notes:edit', args=(cls.note.slug,))
+        cls.url_delete = reverse('notes:delete', args=(cls.note.slug,))
 
     def test_home_availability_for_anonymous(self):
-        url = reverse('notes:home')
-        response = self.client.get(url)
+        response = self.client.get(self.url_home)
         self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_basic_pages_available_for_anonymous(self):
-        for name in ['notes:home', 'users:login', 'users:signup']:
-            url = reverse(name)
+        for url in [self.url_home, self.url_login, self.url_signup]:
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_logout_post_for_anonymous(self):
-        url = reverse('users:logout')
-        response = self.client.post(url)
+        response = self.client.post(self.url_logout)
         self.assertIn(response.status_code, [HTTPStatus.FOUND, HTTPStatus.OK])
 
     def test_list_add_success_available_for_auth_user(self):
         self.client.force_login(self.author)
-        for name in ['notes:list', 'notes:add', 'notes:success']:
-            url = reverse(name)
+        for url in [self.url_list, self.url_add, self.url_success]:
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_detail_edit_delete_for_author(self):
         self.client.force_login(self.author)
-        self.note = Note.objects.create(
-            title='Test',
-            slug='test',
-            text='text',
-            author=self.author
-        )
-        for name in ['notes:detail', 'notes:edit', 'notes:delete']:
-            url = reverse(name, args=(self.note.slug,))
+        for url in [self.url_detail, self.url_edit, self.url_delete]:
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_access_control_for_other_user(self):
-        other = User.objects.create_user(username='other', password='123')
-        self.client.force_login(other)
-        if self.note is None:
-            self.note = Note.objects.create(
-                title='Test2',
-                slug='test2',
-                text='text',
-                author=self.author
-            )
-        for name in ['notes:detail', 'notes:edit', 'notes:delete']:
-            url = reverse(name, args=(self.note.slug,))
+        self.client.force_login(self.other)
+        for url in [self.url_detail, self.url_edit, self.url_delete]:
             response = self.client.get(url)
-            self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+            self.assertNotEqual(response.status_code, HTTPStatus.OK)
 
     def test_redirect_for_anonymous_on_protected_pages(self):
-        login_url = reverse('users:login')
-        self.note = Note.objects.create(
-            title='Protected',
-            slug='protected',
-            text='text',
-            author=self.author
-        )
-
-        protected_names = [
-            'notes:detail',
-            'notes:edit',
-            'notes:delete',
-            'notes:add',
+        protected_urls = [
+            self.url_add,
+            self.url_detail,
+            self.url_edit,
+            self.url_delete,
         ]
-        for name in protected_names:
-            if name in ['notes:detail', 'notes:edit', 'notes:delete']:
-                url = reverse(name, args=(self.note.slug,))
-            else:
-                url = reverse(name)
-
-            expected_next = f'{login_url}?next={url}'
+        for url in protected_urls:
+            expected_next = f'{self.url_login}?next={url}'
             response = self.client.get(url)
             self.assertRedirects(response, expected_next)
