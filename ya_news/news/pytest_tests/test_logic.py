@@ -85,11 +85,12 @@ class TestCommentEditDelete(TestCase):
         self.comment.refresh_from_db()
         self.assertEqual(self.comment.text, self.NEW_COMMENT_TEXT)
 
-    def test_user_cant_edit_comment_of_another_user(self):
-        response = self.reader_client.post(self.edit_url, data=self.form_data)
-        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-        self.comment.refresh_from_db()
-        self.assertEqual(self.comment.text, self.COMMENT_TEXT)
+def test_user_cant_edit_comment_of_another_user(self):
+    response = self.reader_client.post(self.edit_url, data=self.form_data)
+    # Теперь ожидаем 403, а не 404
+    self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
+    self.comment.refresh_from_db()
+    self.assertEqual(self.comment.text, self.COMMENT_TEXT)
 
 
 def test_news_list_sorted_by_date_desc(client):
@@ -176,8 +177,8 @@ def test_comment_edit_other_user_denied(client, comment, reader):
     url = reverse('news:edit', kwargs={'pk': comment.pk})
     response = client.get(url)
 
-    assert response.status_code == 404, (
-        "Чужой пользователь смог получить страницу редактирования"
+    assert response.status_code == HTTPStatus.FORBIDDEN, (
+        "Чужой пользователь не должен иметь доступ к редактированию чужого комментария"
     )
 
 
@@ -205,8 +206,8 @@ def test_comment_delete_other_user_denied(client, comment, reader):
     url = reverse('news:delete', kwargs={'pk': comment.pk})
     response = client.get(url)
 
-    assert response.status_code == 404, (
-        "Чужой пользователь смог получить страницу удаления"
+    assert response.status_code == HTTPStatus.FORBIDDEN, (
+        "Чужой пользователь не должен иметь доступ к удалению чужого комментария"
     )
 
 
