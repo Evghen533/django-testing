@@ -84,16 +84,19 @@ class CommentBase(LoginRequiredMixin):
     model = Comment
 
     def dispatch(self, request, *args, **kwargs):
-        response = super().dispatch(request, *args, **kwargs)
-
-        if response.status_code == 302:
-            return response
-
         self.object = self.get_object()
-        if self.object.author != self.request.user:
+
+        if self.object.author != request.user:
+            from django.http import HttpResponseForbidden
             return HttpResponseForbidden()
 
-        return response
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        comment = self.get_object()
+        return reverse(
+            'news:detail', kwargs={'pk': comment.news.pk}
+        ) + '#comments'
 
 
 class CommentUpdate(CommentBase, generic.UpdateView):
