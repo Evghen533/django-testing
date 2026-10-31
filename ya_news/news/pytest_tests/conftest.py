@@ -10,7 +10,7 @@ from django.test import Client
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'yanews.settings')
 django.setup()
 
-from news.models import News, Comment # noqa: E402
+from news.models import News, Comment  # noqa: E402
 
 
 @pytest.fixture
