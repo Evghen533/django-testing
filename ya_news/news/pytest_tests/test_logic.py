@@ -21,7 +21,11 @@ def form_data():
     return {'text': 'Текст комментария'}
 
 
-def test_anonymous_user_cant_create_comment(client, news_for_comment, form_data):
+def test_anonymous_user_cant_create_comment(
+        client,
+        news_for_comment,
+        form_data
+    ):
     """Анонимный пользователь не может создать комментарий."""
     url = reverse('news:detail', args=(news_for_comment.id,))
     client.post(url, data=form_data)
