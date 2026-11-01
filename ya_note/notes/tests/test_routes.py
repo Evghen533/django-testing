@@ -90,6 +90,7 @@ class RoutesTests(TestCase):
                 "Не 404"
             )
 
+
 @pytest.mark.django_db
 def test_anonymous_redirect_on_protected_pages(client):
     """Аноним редиректится на страницу входа."""
@@ -114,6 +115,7 @@ def test_anonymous_redirect_on_protected_pages(client):
         assert (
             redirected_to_login or on_login_page
         ), f"Аноним не был редиректнут на login при доступе к {url}"
+
 
 @pytest.mark.django_db
 def test_list_page_contains_object_list(client, author):
