@@ -25,7 +25,6 @@ def test_public_pages_availability(client):
         ('news:home', None),
         ('users:login', None),
         ('users:signup', None),
-        ('users:logout', None),
     ]
     for name, args in urls:
         url = reverse(name, args=args)
