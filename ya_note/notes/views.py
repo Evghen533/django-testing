@@ -14,7 +14,7 @@ from .forms import NoteForm
 
 
 class Home(ListView):
-    """Главная страница: список заметок (публичная)."""
+    """Главная страница: список заметок (публичная — видны все)."""
     model = Note
     template_name = 'notes/list.html'
     paginate_by = 10
@@ -23,16 +23,14 @@ class Home(ListView):
         return Note.objects.all().order_by('-pub_date')
 
 
-class NotesList(ListView):
-    """Страница списка заметок (notes/) — дублирует логику Home,
-    если нужно отдельное имя URL.
-    """
+class NotesList(LoginRequiredMixin, ListView):
+    """Личный список заметок: видны только свои заметки."""
     model = Note
     template_name = 'notes/list.html'
     paginate_by = 10
 
     def get_queryset(self):
-        return Note.objects.all().order_by('-pub_date')
+        return Note.objects.filter(author=self.request.user).order_by('-pub_date')
 
 
 class NoteDetail(LoginRequiredMixin, DetailView):

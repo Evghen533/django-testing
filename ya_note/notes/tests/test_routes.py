@@ -116,9 +116,6 @@ def test_other_user_gets_404_on_foreign_note(client, note, other_user):
 
 @pytest.mark.django_db
 def test_anonymous_redirect_on_protected_pages(client):
-    """Аноним редиректится на страницу входа
-    при попытке доступа к защищенным страницам.
-    """
     add_url = reverse('notes:add')
     login_url = reverse('users:login')
     protected_urls = [add_url]
@@ -127,10 +124,18 @@ def test_anonymous_redirect_on_protected_pages(client):
         response = client.get(url, follow=True)
         assert response.status_code in (200, 302)
 
-        redirected_to_login = any(
-            r.get('location', '').endswith(login_url)
-            for r in response.redirect_chain
-        )
+        redirected_to_login = False
+        if hasattr(response, 'redirect_chain'):
+            for redirect in response.redirect_chain:
+                location = None
+                if isinstance(redirect, dict):
+                    location = redirect.get('location')
+                elif isinstance(redirect, tuple) and len(redirect) >= 2:
+                    location = redirect[0]
+
+                if location and location.endswith(login_url):
+                    redirected_to_login = True
+                    break
 
         on_login_page = (
             response.request['PATH_INFO']
