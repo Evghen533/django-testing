@@ -30,7 +30,11 @@ class NotesList(LoginRequiredMixin, ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        return Note.objects.filter(author=self.request.user).order_by('-pub_date')
+        return (
+            Note.objects
+            .filter(author=self.request.user)
+            .order_by('-pub_date')
+        )
 
 
 class NoteDetail(LoginRequiredMixin, DetailView):
