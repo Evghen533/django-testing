@@ -64,7 +64,7 @@ def test_notes_isolation(client, user):
         pub_date=timezone.now(),
     )
 
-    # Своя заметка (опционально, но полезно для проверки)
+    # Своя заметка
     Note.objects.create(
         title='My note',
         slug='my-note',
@@ -81,7 +81,6 @@ def test_notes_isolation(client, user):
     object_list = response.context.get('object_list')
     assert object_list is not None
 
-    # Проверяем, что в списке только свои заметки
     titles = [n.title for n in object_list]
     assert 'My note' in titles
     assert 'Other note' not in titles

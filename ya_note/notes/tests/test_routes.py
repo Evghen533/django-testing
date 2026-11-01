@@ -1,103 +1,123 @@
 import pytest
-from http import HTTPStatus
-
-from django.contrib.auth import get_user_model
-from django.test import TestCase
 from django.urls import reverse
-
+from http import HTTPStatus
 from notes.models import Note
 from django.db.models.query import QuerySet
 
-User = get_user_model()
+
+@pytest.fixture
+def author(db):
+    """Фикстура для создания автора заметки."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    return User.objects.create_user(username='author', password='123')
 
 
-class RoutesTests(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.author = get_user_model().objects.create_user(
-            username='author',
-            password='123'
-        )
-        cls.other = get_user_model().objects.create_user(
-            username='other',
-            password='123'
-        )
-        cls.note = Note.objects.create(
-            title='Test Note',
-            slug='test-note',
-            text='text',
-            author=cls.author
-        )
+@pytest.fixture
+def other_user(db):
+    """Фикстура для создания другого пользователя (для проверки прав)."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    return User.objects.create_user(username='other', password='123')
 
-        cls.url_home = reverse('notes:home')
-        cls.url_list = reverse('notes:list')
-        cls.url_add = reverse('notes:add')
-        cls.url_success = reverse('notes:success')
-        cls.url_login = reverse('users:login')
-        cls.url_logout = reverse('users:logout')
-        cls.url_signup = reverse('users:signup')
 
-        cls.url_detail = reverse('notes:detail', args=(cls.note.slug,))
-        cls.url_edit = reverse('notes:edit', args=(cls.note.slug,))
-        cls.url_delete = reverse('notes:delete', args=(cls.note.slug,))
+@pytest.fixture
+def note(author):
+    """Фикстура для создания заметки."""
+    return Note.objects.create(
+        title='Test Note',
+        slug='test-note',
+        text='text',
+        author=author
+    )
 
-    def test_home_availability_for_anonymous(self):
-        """Главная страница доступна анонимному пользователю."""
-        response = self.client.get(self.url_home)
-        self.assertEqual(response.status_code, HTTPStatus.OK)
 
-    def test_basic_public_pages_availability(self):
-        """Публичные страницы доступны анонимусу."""
-        public_urls = [self.url_home, self.url_login, self.url_signup]
-        for url in public_urls:
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, HTTPStatus.OK)
+@pytest.mark.django_db
+def test_home_availability_for_anonymous(client):
+    """Главная страница доступна анонимному пользователю."""
+    url = reverse('notes:home')
+    response = client.get(url)
+    assert response.status_code == HTTPStatus.OK
 
-    def test_logout_behavior(self):
-        """Проверка работы страницы выхода (обычно это POST с редиректом)."""
-        response = self.client.post(self.url_logout)
 
-        self.assertIn(response.status_code, [HTTPStatus.FOUND, HTTPStatus.OK])
+@pytest.mark.django_db
+def test_basic_public_pages_availability(client):
+    """Публичные страницы доступны анонимусу."""
+    login_url = reverse('users:login')
+    signup_url = reverse('users:signup')
+    home_url = reverse('notes:home')
 
-    def test_protected_pages_available_for_author(self):
-        """Автор видит страницы списка, добавления и успеха."""
-        self.client.force_login(self.author)
-        protected_urls = [self.url_list, self.url_add, self.url_success]
+    public_urls = [home_url, login_url, signup_url]
 
-        for url in protected_urls:
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, HTTPStatus.OK)
+    for url in public_urls:
+        response = client.get(url)
+        assert response.status_code == HTTPStatus.OK
 
-    def test_author_access_to_own_note_actions(self):
-        """Автор может работать со своей заметкой."""
-        self.client.force_login(self.author)
-        actions_urls = [self.url_detail, self.url_edit, self.url_delete]
 
-        for url in actions_urls:
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, HTTPStatus.OK)
+@pytest.mark.django_db
+def test_logout_behavior(client, author):
+    """Проверка работы страницы выхода (обычно это POST с редиректом)."""
+    client.force_login(author)
+    url = reverse('users:logout')
+    response = client.post(url)
 
-    def test_other_user_gets_404_on_foreign_note(self):
-        """Чужой пользователь получает 404 на чужую заметку."""
-        self.client.force_login(self.other)
-        restricted_urls = [self.url_detail, self.url_edit, self.url_delete]
+    assert response.status_code in (HTTPStatus.FOUND, HTTPStatus.OK)
 
-        for url in restricted_urls:
-            response = self.client.get(url)
-            self.assertEqual(
-                response.status_code,
-                HTTPStatus.NOT_FOUND,
-                "Не 404"
-            )
+
+@pytest.mark.django_db
+def test_protected_pages_available_for_author(client, author):
+    """Автор видит страницы списка, добавления и успеха."""
+    client.force_login(author)
+
+    list_url = reverse('notes:list')
+    add_url = reverse('notes:add')
+    success_url = reverse('notes:success')
+
+    protected_urls = [list_url, add_url, success_url]
+
+    for url in protected_urls:
+        response = client.get(url)
+        assert response.status_code == HTTPStatus.OK
+
+
+@pytest.mark.django_db
+def test_author_access_to_own_note_actions(client, note):
+    """Автор может работать со своей заметкой (просмотр, редактирование, удаление)."""
+    client.force_login(note.author)
+
+    detail_url = reverse('notes:detail', args=(note.slug,))
+    edit_url = reverse('notes:edit', args=(note.slug,))
+    delete_url = reverse('notes:delete', args=(note.slug,))
+
+    actions_urls = [detail_url, edit_url, delete_url]
+
+    for url in actions_urls:
+        response = client.get(url)
+        assert response.status_code == HTTPStatus.OK
+
+
+@pytest.mark.django_db
+def test_other_user_gets_404_on_foreign_note(client, note, other_user):
+    """Чужой пользователь получает 404 на чужую заметку."""
+    client.force_login(other_user)
+
+    detail_url = reverse('notes:detail', args=(note.slug,))
+    edit_url = reverse('notes:edit', args=(note.slug,))
+    delete_url = reverse('notes:delete', args=(note.slug,))
+
+    restricted_urls = [detail_url, edit_url, delete_url]
+
+    for url in restricted_urls:
+        response = client.get(url)
+        assert response.status_code == HTTPStatus.NOT_FOUND
 
 
 @pytest.mark.django_db
 def test_anonymous_redirect_on_protected_pages(client):
-    """Аноним редиректится на страницу входа."""
-    protected_urls = [
-        reverse('notes:add'),
-    ]
+    """Аноним редиректится на страницу входа при попытке доступа к защищенным страницам."""
+    add_url = reverse('notes:add')
     login_url = reverse('users:login')
+    protected_urls = [add_url]
 
     for url in protected_urls:
         response = client.get(url, follow=True)
@@ -107,6 +127,7 @@ def test_anonymous_redirect_on_protected_pages(client):
             r['location'].endswith(login_url)
             for r in response.redirect_chain
         )
+
         on_login_page = (
             response.request['PATH_INFO']
             .endswith(login_url.lstrip('/'))
@@ -122,7 +143,7 @@ def test_list_page_contains_object_list(client, author):
     """В контексте списка заметок есть object_list (QuerySet или список)."""
     Note.objects.create(
         title='Test note',
-        slug='test-note',
+        slug='test-note-2',
         text='Text',
         author=author,
     )
