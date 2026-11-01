@@ -1,3 +1,4 @@
+import pytest
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -48,22 +49,39 @@ class ContentTests(TestCase):
         self.assertEqual(dates, sorted(dates, reverse=True))
 
 
-def test_notes_isolation(self):
-    other_user = get_user_model().objects.create_user(
-        username='other', password='123'
-    )
+@pytest.mark.django_db
+def test_notes_isolation(client, user):
+    """У каждого пользователя свои заметки, чужие не видны."""
+    User = get_user_model()
+
+    # Создаём другого пользователя и его заметку
+    other_user = User.objects.create_user(username='other', password='123')
     Note.objects.create(
         title='Other note',
         slug='other-note',
         text='text',
         author=other_user,
-        pub_date=timezone.now()
+        pub_date=timezone.now(),
     )
 
-    url = reverse('notes:list')
-    response = self.client.get(url)
-    self.assertEqual(response.status_code, 200)
-    object_list = response.context['object_list']
+    # Своя заметка (опционально, но полезно для проверки)
+    Note.objects.create(
+        title='My note',
+        slug='my-note',
+        text='text',
+        author=user,
+        pub_date=timezone.now(),
+    )
 
-    for note in object_list:
-        self.assertEqual(note.author, self.user)
+    client.force_login(user)
+    url = reverse('notes:list')
+    response = client.get(url)
+
+    assert response.status_code == 200
+    object_list = response.context.get('object_list')
+    assert object_list is not None
+
+    # Проверяем, что в списке только свои заметки
+    titles = [n.title for n in object_list]
+    assert 'My note' in titles
+    assert 'Other note' not in titles
