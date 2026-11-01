@@ -8,8 +8,6 @@ from datetime import timedelta
 
 from notes.models import Note
 
-User = get_user_model()
-
 
 class ContentTests(TestCase):
     @classmethod
@@ -54,7 +52,6 @@ def test_notes_isolation(client, user):
     """У каждого пользователя свои заметки, чужие не видны."""
     User = get_user_model()
 
-    # Создаём другого пользователя и его заметку
     other_user = User.objects.create_user(username='other', password='123')
     Note.objects.create(
         title='Other note',
@@ -64,7 +61,6 @@ def test_notes_isolation(client, user):
         pub_date=timezone.now(),
     )
 
-    # Своя заметка
     Note.objects.create(
         title='My note',
         slug='my-note',

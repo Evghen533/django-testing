@@ -128,7 +128,7 @@ def test_anonymous_redirect_on_protected_pages(client):
         assert response.status_code in (200, 302)
 
         redirected_to_login = any(
-            r['location'].endswith(login_url)
+            r.get('location', '').endswith(login_url)
             for r in response.redirect_chain
         )
 
