@@ -40,44 +40,78 @@ class RoutesTests(TestCase):
         cls.url_delete = reverse('notes:delete', args=(cls.note.slug,))
 
     def test_home_availability_for_anonymous(self):
+        """Главная страница доступна анонимному пользователю."""
         response = self.client.get(self.url_home)
         self.assertEqual(response.status_code, HTTPStatus.OK)
 
-    def test_basic_pages_available_for_anonymous(self):
-        for url in [self.url_home, self.url_login, self.url_signup]:
+    def test_basic_public_pages_availability(self):
+        """Публичные страницы доступны анонимусу."""
+        public_urls = [self.url_home, self.url_login, self.url_signup]
+        for url in public_urls:
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTPStatus.OK)
 
-    def test_logout_post_for_anonymous(self):
+    def test_logout_behavior(self):
+        """Проверка работы страницы выхода (обычно это POST с редиректом)."""
         response = self.client.post(self.url_logout)
+
         self.assertIn(response.status_code, [HTTPStatus.FOUND, HTTPStatus.OK])
 
-    def test_list_add_success_available_for_auth_user(self):
+    def test_protected_pages_available_for_author(self):
+        """Автор видит страницы списка, добавления и успеха."""
         self.client.force_login(self.author)
-        for url in [self.url_list, self.url_add, self.url_success]:
+        protected_urls = [self.url_list, self.url_add, self.url_success]
+
+        for url in protected_urls:
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTPStatus.OK)
 
-    def test_detail_edit_delete_for_author(self):
+    def test_author_access_to_own_note_actions(self):
+        """Автор может работать со своей заметкой."""
         self.client.force_login(self.author)
-        for url in [self.url_detail, self.url_edit, self.url_delete]:
+        actions_urls = [self.url_detail, self.url_edit, self.url_delete]
+
+        for url in actions_urls:
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTPStatus.OK)
 
-    def test_access_control_for_other_user(self):
+    def test_other_user_gets_404_on_foreign_note(self):
+        """Чужой пользователь получает 404 на чужую заметку."""
         self.client.force_login(self.other)
-        for url in [self.url_detail, self.url_edit, self.url_delete]:
-            response = self.client.get(url)
-            self.assertNotEqual(response.status_code, HTTPStatus.OK)
+        restricted_urls = [self.url_detail, self.url_edit, self.url_delete]
 
-    def test_redirect_for_anonymous_on_protected_pages(self):
+        for url in restricted_urls:
+            response = self.client.get(url)
+            self.assertEqual(
+                response.status_code,
+                HTTPStatus.NOT_FOUND,
+                "Не 404"
+            )
+
+    def test_anonymous_redirect_on_protected_pages(self):
+        """Анонимус редиректится на логин с next."""
         protected_urls = [
             self.url_add,
             self.url_detail,
             self.url_edit,
             self.url_delete,
         ]
+
         for url in protected_urls:
             expected_next = f'{self.url_login}?next={url}'
             response = self.client.get(url)
-            self.assertRedirects(response, expected_next)
+
+            self.assertRedirects(response, expected_next, "Нет редиректа")
+
+    def test_list_page_contains_object_list(self):
+        """В контексте списка заметок есть object_list."""
+        self.client.force_login(self.author)
+        response = self.client.get(self.url_list)
+
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertIn('object_list', response.context, "Нет object_list")
+        self.assertIsInstance(
+            response.context['object_list'],
+            list,
+            "object_list не список"
+        )

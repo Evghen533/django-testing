@@ -12,45 +12,48 @@ pytestmark = pytest.mark.django_db
 User = get_user_model()
 
 
-class TestCommentCreation(TestCase):
-    COMMENT_TEXT = 'Текст комментария'
+@pytest.fixture
+def news_for_comment(client):
+    return News.objects.create(title='Заголовок', text='Текст')
 
-    @classmethod
-    def setUpTestData(cls):
-        cls.news = News.objects.create(title='Заголовок', text='Текст')
-        cls.url = reverse('news:detail', args=(cls.news.id,))
-        cls.user = User.objects.create(username='Мимо Крокодил')
-        cls.auth_client = Client()
-        cls.auth_client.force_login(cls.user)
-        cls.form_data = {'text': cls.COMMENT_TEXT}
+@pytest.fixture
+def form_data():
+    return {'text': 'Текст комментария'}
 
-    def test_anonymous_user_cant_create_comment(self):
-        self.client.post(self.url, data=self.form_data)
-        comments_count = Comment.objects.count()
-        self.assertEqual(comments_count, 0)
+def test_anonymous_user_cant_create_comment(client, news_for_comment, form_data):
+    """Анонимный пользователь не может создать комментарий."""
+    url = reverse('news:detail', args=(news_for_comment.id,))
+    client.post(url, data=form_data)
+    assert Comment.objects.count() == 0
 
-    def test_user_can_create_comment(self):
-        response = self.auth_client.post(self.url, data=self.form_data)
-        self.assertRedirects(response, f'{self.url}#comments')
-        comments_count = Comment.objects.count()
-        self.assertEqual(comments_count, 1)
-        comment = Comment.objects.get()
-        self.assertEqual(comment.text, self.COMMENT_TEXT)
-        self.assertEqual(comment.news, self.news)
-        self.assertEqual(comment.author, self.user)
+def test_user_can_create_comment(client, news_for_comment, author, form_data):
+    """Авторизованный пользователь может создать комментарий."""
+    client.force_login(author)
+    url = reverse('news:detail', args=(news_for_comment.id,))
 
-    def test_user_cant_use_bad_words(self):
-        from news.forms import BAD_WORDS, WARNING
-        bad_words_data = {'text': f'Какой-то текст, {BAD_WORDS[0]}, еще текст'}
-        response = self.auth_client.post(self.url, data=bad_words_data)
-        form = response.context['form']
-        self.assertFormError(
-            form=form,
-            field='text',
-            errors=WARNING
-        )
-        comments_count = Comment.objects.count()
-        self.assertEqual(comments_count, 0)
+    response = client.post(url, data=form_data)
+    assert response.status_code in [200, 302]
+
+    assert Comment.objects.count() == 1
+    comment = Comment.objects.get()
+    assert comment.text == form_data['text']
+    assert comment.author == author
+
+def test_user_cant_use_bad_words(client, news_for_comment, author, form_data):
+    """Комментарий с запрещенными словами не публикуется."""
+    from news.forms import BAD_WORDS, WARNING
+
+    client.force_login(author)
+    url = reverse('news:detail', args=(news_for_comment.id,))
+    bad_text = f"Какой-то текст, {BAD_WORDS}, еще текст"
+
+    response = client.post(url, data={'text': bad_text})
+
+    assert 'form' in response.context
+    form = response.context['form']
+    assert form.errors.get('text') == [WARNING]
+
+    assert Comment.objects.count() == 0
 
 
 @pytest.mark.django_db

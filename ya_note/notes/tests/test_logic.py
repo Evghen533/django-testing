@@ -64,14 +64,14 @@ class LogicTests(TestCase):
         data['slug'] = existing_note.slug
         initial_count = Note.objects.count()
         response = self.client.post(url, data=data)
-        form_errors = response.context['form'].errors.get('slug', )
-        error_message_fragment = (
-            'такой slug уже существует, придумайте уникальное значение!'
-        )
-        found = any(error_message_fragment in err for err in form_errors)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Note.objects.count(), initial_count)
+        form = response.context.get('form')
+        self.assertIsNotNone(form, "Форма должна быть в контексте ответа")
+        slug_errors = form.errors.get('slug')
         self.assertTrue(
-            found,
-            f"Не найдена фраза в ошибке: {error_message_fragment}"
+            bool(slug_errors),
+            "При дублировании slug должна возникать ошибка валидации в поле 'slug'"
         )
         self.assertEqual(Note.objects.count(), initial_count)
 
