@@ -82,7 +82,9 @@ def test_protected_pages_available_for_author(client, author):
 
 @pytest.mark.django_db
 def test_author_access_to_own_note_actions(client, note):
-    """Автор может работать со своей заметкой (просмотр, редактирование, удаление)."""
+    """Автор может работать со своей заметкой:
+    просмотр, редактирование, удаление.
+    """
     client.force_login(note.author)
 
     detail_url = reverse('notes:detail', args=(note.slug,))
@@ -114,7 +116,9 @@ def test_other_user_gets_404_on_foreign_note(client, note, other_user):
 
 @pytest.mark.django_db
 def test_anonymous_redirect_on_protected_pages(client):
-    """Аноним редиректится на страницу входа при попытке доступа к защищенным страницам."""
+    """Аноним редиректится на страницу входа
+    при попытке доступа к защищенным страницам.
+    """
     add_url = reverse('notes:add')
     login_url = reverse('users:login')
     protected_urls = [add_url]
