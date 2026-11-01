@@ -47,6 +47,7 @@ class ContentTests(TestCase):
         dates = [n.pub_date for n in object_list]
         self.assertEqual(dates, sorted(dates, reverse=True))
 
+
 def test_notes_isolation(self):
     other_user = get_user_model().objects.create_user(
         username='other', password='123'

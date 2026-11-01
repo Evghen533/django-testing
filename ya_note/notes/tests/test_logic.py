@@ -70,8 +70,7 @@ class LogicTests(TestCase):
         self.assertIsNotNone(form, "Форма должна быть в контексте ответа")
         slug_errors = form.errors.get('slug')
         self.assertTrue(
-            bool(slug_errors),
-            "При дублировании slug должна возникать ошибка валидации в поле 'slug'"
+            bool(slug_errors)
         )
         self.assertEqual(Note.objects.count(), initial_count)
 

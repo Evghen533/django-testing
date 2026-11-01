@@ -30,7 +30,9 @@ def test_public_pages_availability(client):
     for name, args in urls:
         url = reverse(name, args=args)
         response = client.get(url)
-        assert response.status_code in [HTTPStatus.OK, HTTPStatus.FOUND], f"{name} недоступна"
+        assert response.status_code in [HTTPStatus.OK, HTTPStatus.FOUND], (
+            f"{name} недоступна"
+        )
 
 
 def test_comment_edit_delete_permissions(client, comment, author, reader):

@@ -3,7 +3,6 @@
 import pytest
 from django.urls import reverse
 from http import HTTPStatus
-from django.test import Client, TestCase
 from datetime import date, timedelta
 from news.models import News, Comment
 from django.contrib.auth import get_user_model
@@ -16,15 +15,18 @@ User = get_user_model()
 def news_for_comment(client):
     return News.objects.create(title='Заголовок', text='Текст')
 
+
 @pytest.fixture
 def form_data():
     return {'text': 'Текст комментария'}
+
 
 def test_anonymous_user_cant_create_comment(client, news_for_comment, form_data):
     """Анонимный пользователь не может создать комментарий."""
     url = reverse('news:detail', args=(news_for_comment.id,))
     client.post(url, data=form_data)
     assert Comment.objects.count() == 0
+
 
 def test_user_can_create_comment(client, news_for_comment, author, form_data):
     """Авторизованный пользователь может создать комментарий."""
@@ -38,6 +40,7 @@ def test_user_can_create_comment(client, news_for_comment, author, form_data):
     comment = Comment.objects.get()
     assert comment.text == form_data['text']
     assert comment.author == author
+
 
 def test_user_cant_use_bad_words(client, news_for_comment, author, form_data):
     """Комментарий с запрещенными словами не публикуется."""
