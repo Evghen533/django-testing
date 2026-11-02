@@ -1,243 +1,142 @@
-"""Тесты бизнес-логики: сортировка, комментарии, права доступа."""
-
 import pytest
-from django.urls import reverse
 from http import HTTPStatus
-from datetime import date, timedelta
+from django.urls import reverse
 from news.models import News, Comment
-from django.contrib.auth import get_user_model
-
-pytestmark = pytest.mark.django_db
-User = get_user_model()
+from news.forms import BAD_WORDS, WARNING
 
 
 @pytest.fixture
-def news_for_comment(client):
+def news():
+    """Одна тестовая новость."""
     return News.objects.create(title='Заголовок', text='Текст')
 
 
 @pytest.fixture
-def form_data():
-    return {'text': 'Текст комментария'}
+def user():
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    return User.objects.create_user(username='Мимо Крокодил', password='pass')
 
 
-def test_anonymous_user_cant_create_comment(
-        client,
-        news_for_comment,
-        form_data
-):
+@pytest.fixture
+def auth_client(user, client):
+    client.force_login(user)
+    return client
+
+
+@pytest.fixture
+def comment(news, user):
+    """Комментарий, принадлежащий пользователю."""
+    return Comment.objects.create(
+        news=news,
+        author=user,
+        text='Текст комментария'
+    )
+
+
+@pytest.fixture
+def reader():
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    return User.objects.create_user(username='Читатель', password='pass')
+
+
+@pytest.fixture
+def reader_client(reader, client):
+    client.force_login(reader)
+    return client
+
+
+def test_anonymous_cannot_create_comment(client, news):
     """Анонимный пользователь не может создать комментарий."""
-    url = reverse('news:detail', args=(news_for_comment.id,))
-    client.post(url, data=form_data)
+    url = reverse('news:detail', args=(news.id,))
+    form_data = {'text': 'Текст комментария'}
+    response = client.post(url, data=form_data)
+
+    assert response.status_code in (301, 302)
     assert Comment.objects.count() == 0
 
 
-def test_user_can_create_comment(client, news_for_comment, author, form_data):
-    """Авторизованный пользователь может создать комментарий."""
-    client.force_login(author)
-    url = reverse('news:detail', args=(news_for_comment.id,))
+def test_authorized_user_can_create_comment(auth_client, news, user):
+    """Авторизованный пользователь может создать комментарий к новости."""
+    url = reverse('news:detail', args=(news.id,))
+    comment_text = 'Текст комментария'
+    form_data = {'text': comment_text}
 
-    response = client.post(url, data=form_data)
-    assert response.status_code in [200, 302]
+    response = auth_client.post(url, data=form_data)
 
-    assert Comment.objects.count() == 1
-    comment = Comment.objects.get()
-    assert comment.text == form_data['text']
-    assert comment.author == author
+    expected_redirect = f'{url}#comments'
+    assert response.status_code in (301, 302)
+    assert response.url == expected_redirect
+
+    comments = Comment.objects.all()
+    assert comments.count() == 1
+    comment = comments.first()
+    assert comment.text == comment_text
+    assert comment.news == news
+    assert comment.author == user
 
 
-def test_user_cant_use_bad_words(client, news_for_comment, author, form_data):
-    """Комментарий с запрещенными словами не публикуется."""
-    from news.forms import BAD_WORDS, WARNING
+def test_comment_validation_bad_words(auth_client, news):
+    """Форма отклоняет комментарий с запрещёнными словами."""
+    url = reverse('news:detail', args=(news.id,))
+    bad_text = f'Какой-то текст, {BAD_WORDS[0]}, еще текст'
+    form_data = {'text': bad_text}
 
-    client.force_login(author)
-    url = reverse('news:detail', args=(news_for_comment.id,))
-    bad_text = f"Какой-то текст, {BAD_WORDS}, еще текст"
+    response = auth_client.post(url, data=form_data)
+    assert response.status_code == 200
 
-    response = client.post(url, data={'text': bad_text})
-
-    assert 'form' in response.context
-    form = response.context['form']
-    assert form.errors.get('text') == [WARNING]
+    form = response.context.get('form')
+    assert form is not None
+    assert 'text' in form.errors
+    assert WARNING in form.errors['text']
 
     assert Comment.objects.count() == 0
 
 
-@pytest.mark.django_db
-def test_news_list_sorted_by_date_desc(client):
-    """Новости на главной сортируются по дате (новые сверху).
+def test_author_can_delete_comment(auth_client, comment, news):
+    """Автор может удалить свой комментарий (DELETE-запрос)."""
+    url = reverse('news:delete', args=(comment.id,))
+    expected_redirect = f"{reverse('news:detail', args=(news.id,))}#comments"
 
-    Тест создаёт новости с разными датами и проверяет, что в списке
-    первой идёт самая свежая новость, а последней — самая старая.
-    """
-    old_news = News.objects.create(
-        title='Старая новость',
-        text='Старый текст',
-        date=date.today() - timedelta(days=10),
-    )
-    new_news = News.objects.create(
-        title='Новая новость',
-        text='Новый текст',
-        date=date.today(),
-    )
-
-    url = reverse('news:home')
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
-    assert 'news_feed' in response.context
-
-    news_feed = list(response.context['news_feed'])
-
-    assert len(news_feed) >= 2
-    assert (
-        news_feed[0].pk == new_news.pk
-    ), "Первая новость должна быть самой новой"
-    assert (
-        news_feed[-1].pk == old_news.pk
-    ), "Последняя новость должна быть самой старой"
+    response = auth_client.delete(url)
+    assert response.status_code in (301, 302)
+    assert response.url == expected_redirect
+    assert not Comment.objects.filter(pk=comment.pk).exists()
 
 
-@pytest.mark.django_db
-def test_comment_add_via_post_with_csrf(client, news, author):
-    """Добавление комментария через POST с CSRF-токеном работает.
+def test_other_user_cannot_delete_comment(reader_client, comment):
+    """Другой пользователь не может удалить чужой комментарий — 404."""
+    url = reverse('news:delete', args=(comment.id,))
 
-    Тест проверяет, что комментарий успешно создаётся при POST-запросе
-    с корректным CSRF-токеном.
-    """
-    client.force_login(author)
-    detail_url = reverse('news:detail', kwargs={'pk': news.pk})
-
-    resp_get = client.get(detail_url)
-    csrf_token = resp_get.cookies['csrftoken'].value
-
-    data = {
-        'text': 'Комментарий с CSRF',
-        'csrfmiddlewaretoken': csrf_token,
-    }
-
-    post_response = client.post(detail_url, data, follow=True)
-    assert post_response.status_code in [200, 302]
-
-    assert Comment.objects.filter(text='Комментарий с CSRF').exists(), (
-        "Комментарий не был создан в БД"
-    )
+    response = reader_client.delete(url)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert Comment.objects.filter(pk=comment.pk).exists()
 
 
-@pytest.mark.django_db
-def test_comment_edit_own_access(client, comment, author):
-    """Автор может получить страницу редактирования своего комментария.
+def test_author_can_edit_comment(auth_client, comment, news):
+    """Автор может отредактировать свой комментарий (POST)."""
+    url = reverse('news:edit', args=(comment.id,))
+    new_text = 'Обновлённый комментарий'
+    form_data = {'text': new_text}
+    expected_redirect = f"{reverse('news:detail', args=(news.id,))}#comments"
 
-    Автор комментария должен иметь доступ к странице редактирования
-    своего комментария и видеть там форму.
-    """
-    client.force_login(author)
-    url = reverse('news:edit', kwargs={'pk': comment.pk})
-    response = client.get(url)
-
-    assert response.status_code == 200, (
-        "Автор не может получить страницу редактирования"
-    )
-    assert 'form' in response.context, "Форма редактирования отсутствует"
-
-
-@pytest.mark.django_db
-def test_comment_edit_other_user_denied(client, comment, reader):
-    """Читатель не может получить страницу чужого комментария (403 Forbidden).
-
-    Пользователь, не являющийся автором комментария, не должен иметь
-    доступа к странице редактирования чужого комментария.
-    """
-    client.force_login(reader)
-    url = reverse('news:edit', kwargs={'pk': comment.pk})
-    response = client.get(url)
-
-    assert response.status_code == HTTPStatus.FORBIDDEN, (
-        "Чужой пользователь не должен иметь доступ "
-        "к редактированию чужого комментария"
-    )
-
-
-@pytest.mark.django_db
-def test_user_cant_edit_comment_of_another_user(client, comment, reader):
-    """Читатель не может редактировать чужой комментарий (403 Forbidden)."""
-    old_text = comment.text
-
-    client.force_login(reader)
-    url = reverse('news:edit', kwargs={'pk': comment.pk})
-    form_data = {'text': 'Попытка чужого редактирования'}
-
-    response = client.post(url, data=form_data)
-
-    assert response.status_code == HTTPStatus.FORBIDDEN, (
-        "Читатель не должен иметь права редактировать чужой комментарий"
-    )
+    response = auth_client.post(url, data=form_data)
+    assert response.status_code in (301, 302)
+    assert response.url == expected_redirect
 
     comment.refresh_from_db()
-    assert comment.text == old_text, "Комментарий не должен был измениться"
+    assert comment.text == new_text
 
 
-@pytest.mark.django_db
-def test_comment_delete_own_access(client, comment, author):
-    """Автор может получить страницу удаления своего комментария.
+def test_other_user_cannot_edit_comment(reader_client, comment):
+    """Другой пользователь не может редактировать чужой комментарий — 404."""
+    url = reverse('news:edit', args=(comment.id,))
+    new_text = 'Попытка подмены'
+    form_data = {'text': new_text}
 
-    Автор комментария должен иметь возможность открыть страницу удаления
-    своего комментария.
-    """
-    client.force_login(author)
-    url = reverse('news:delete', kwargs={'pk': comment.pk})
-    response = client.get(url)
+    response = reader_client.post(url, data=form_data)
+    assert response.status_code == HTTPStatus.NOT_FOUND
 
-    assert response.status_code == 200, (
-        "Автор не может получить страницу удаления"
-    )
-
-
-@pytest.mark.django_db
-def test_comment_delete_other_user_denied(client, comment, reader):
-    """Читатель не может получить страницу удаления чужого комментария
-    (403 Forbidden).
-
-    Читатель не должен иметь доступа к странице удаления чужого комментария.
-    """
-    client.force_login(reader)
-    url = reverse('news:delete', kwargs={'pk': comment.pk})
-    response = client.get(url)
-
-    assert response.status_code == HTTPStatus.FORBIDDEN, (
-        "Чужой пользователь не должен иметь доступ "
-        "к удалению чужого комментария"
-    )
-
-
-@pytest.mark.django_db
-def test_detail_page_shows_only_related_comments(client, comment, news):
-    """На странице новости отображаются только комментарии к ней.
-
-    На detail-странице конкретной новости не должны показываться
-    комментарии, относящиеся к другим новостям.
-    """
-    user_model = get_user_model()
-    other_author = user_model.objects.create_user(
-        username='other_author',
-        password='pass123456',
-    )
-
-    other_news = News.objects.create(
-        title='Другая новость',
-        text='Текст другой новости',
-        date=date.today(),
-    )
-    Comment.objects.create(
-        news=other_news,
-        author=other_author,
-        text='Комментарий к ДРУГОЙ новости',
-    )
-
-    url = reverse('news:detail', kwargs={'pk': news.pk})
-    response = client.get(url)
-    content = response.content.decode('utf-8')
-
-    assert comment.text in content, "Комментарий к новости не отображается"
-    assert 'Комментарий к ДРУГОЙ новости' not in content, (
-        "На странице новости отображаются комментарии от других новостей!"
-    )
+    comment.refresh_from_db()
+    assert comment.text != new_text

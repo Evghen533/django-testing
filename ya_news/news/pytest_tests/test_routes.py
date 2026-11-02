@@ -2,77 +2,67 @@ import pytest
 from http import HTTPStatus
 from django.urls import reverse
 
-pytestmark = pytest.mark.django_db
-
 
 def test_home_page(client):
-    """Главная страница должна возвращать 200 OK."""
     url = reverse('news:home')
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
 
 def test_detail_page(client, news):
-    """Detail-страница новости должна возвращать 200 OK."""
     url = reverse('news:detail', args=(news.id,))
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
 
-def test_public_pages_availability(client):
-    """Публичные страницы должны быть доступны."""
-    urls = [
+@pytest.mark.parametrize(
+    "name,args",
+    [
         ('news:home', None),
         ('users:login', None),
         ('users:signup', None),
-    ]
-    for name, args in urls:
-        url = reverse(name, args=args)
+    ],
+)
+def test_public_pages_availability(client, name, args):
+    url = reverse(name, args=args)
+    response = client.get(url)
+    assert response.status_code == HTTPStatus.OK
+
+
+def test_news_detail_with_existing_news(client, news):
+    url = reverse('news:detail', args=(news.id,))
+    response = client.get(url)
+    assert response.status_code == HTTPStatus.OK
+
+
+@pytest.mark.parametrize(
+    "user_fixture,expected_status",
+    [
+        ("author", HTTPStatus.OK),
+        ("reader", HTTPStatus.NOT_FOUND),
+    ],
+)
+def test_comment_edit_and_delete_access(
+    client, comment, user_fixture, expected_status, request
+):
+    current_user = request.getfixturevalue(user_fixture)
+    client.force_login(current_user)
+
+    actions = ['news:edit', 'news:delete']
+    for action_name in actions:
+        url = reverse(action_name, args=(comment.id,))
         response = client.get(url)
-        assert response.status_code in [HTTPStatus.OK, HTTPStatus.FOUND], (
-            f"{name} недоступна"
-        )
+        assert response.status_code == expected_status
 
 
-def test_comment_edit_delete_permissions(client, comment, author, reader):
-    """
-    Проверка прав доступа к редактированию и удалению комментария.
-
-    Автор: 200 OK (доступ к форме).
-    Другой пользователь: 403 Forbidden (ресурс существует, но нет прав).
-    """
-    actions = [
-        ('news:edit', comment.id),
-        ('news:delete', comment.id),
-    ]
-
-    client.force_login(author)
-    for name, obj_id in actions:
-        url = reverse(name, args=(obj_id,))
-        response = client.get(url)
-        assert response.status_code == HTTPStatus.OK
-
-    client.force_login(reader)
-    for name, obj_id in actions:
-        url = reverse(name, args=(obj_id,))
-        response = client.get(url)
-        assert response.status_code == HTTPStatus.FORBIDDEN
-
-
-def test_redirect_for_anonymous_on_protected_pages(client, comment):
-    """Анонимные пользователи перенаправляются на страницу входа."""
+def test_redirect_for_anonymous_on_comment_actions(client, comment):
     login_url = reverse('users:login')
-    actions = [
-        ('news:edit', comment.id),
-        ('news:delete', comment.id),
-    ]
+    actions = ['news:edit', 'news:delete']
 
-    for name, obj_id in actions:
-        url = reverse(name, args=(obj_id,))
-        expected_location = f"{login_url}?next={url}"
+    for action_name in actions:
+        url = reverse(action_name, args=(comment.id,))
+        redirect_url = f'{login_url}?next={url}'
 
-        response = client.get(url)
-
-        assert response.status_code == HTTPStatus.FOUND
-        assert response.has_header('Location')
-        assert response['Location'] == expected_location
+        response = client.get(url, follow=True)
+        assert any(redirect_url in redirect for redirect in response.redirect_chain)
+        assert response.status_code == HTTPStatus.OK

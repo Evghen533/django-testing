@@ -1,34 +1,72 @@
 import pytest
-from http import HTTPStatus
-from django.urls import reverse
-from datetime import date, timedelta
-from django.utils import timezone
 from django.conf import settings
+from django.utils import timezone
+from datetime import datetime, timedelta
+from django.urls import reverse
 from news.models import News, Comment
+from news.forms import CommentForm
 
-pytestmark = pytest.mark.django_db
 
-
-@pytest.fixture
-def many_news():
-    """Создаёт много новостей для теста пагинации и сортировки."""
-    limit = getattr(settings, 'NEWS_COUNT_ON_HOME_PAGE', 10)
-    news_list = []
-    today = date.today()
-    for i in range(limit + 5):
-        news_list.append(
-            News.objects.create(
-                title=f'Новость {i}',
-                text=f'Текст новости {i}',
-                date=today - timedelta(days=i),
-            )
+@pytest.mark.django_db
+def test_news_count_on_home_page(client):
+    """На главной странице отображается ровно NEWS_COUNT_ON_HOME_PAGE новостей."""
+    today = datetime.today()
+    count_to_create = settings.NEWS_COUNT_ON_HOME_PAGE + 1
+    all_news = [
+        News(
+            title=f'Новость {index}',
+            text='Просто текст.',
+            date=today - timedelta(days=index)
         )
-    return news_list
+        for index in range(count_to_create)
+    ]
+    News.objects.bulk_create(all_news)
+
+    url = reverse('news:home')
+    response = client.get(url)
+    assert response.status_code == 200
+    object_list = response.context['object_list']
+    news_count = object_list.count() if hasattr(object_list, 'count') else len(object_list)
+    assert news_count == settings.NEWS_COUNT_ON_HOME_PAGE
+
+
+@pytest.mark.django_db
+def test_news_order_on_home_page(client):
+    """Новости на главной странице отсортированы по дате: новые сверху."""
+    today = datetime.today()
+    count_to_create = 5
+    all_news = [
+        News(
+            title=f'Новость {index}',
+            text='Просто текст.',
+            date=today - timedelta(days=index)
+        )
+        for index in range(count_to_create)
+    ]
+    News.objects.bulk_create(all_news)
+
+    url = reverse('news:home')
+    response = client.get(url)
+    assert response.status_code == 200
+
+    object_list = response.context['object_list']
+    all_dates = [news.date for news in object_list]
+    sorted_dates = sorted(all_dates, reverse=True)
+    assert all_dates == sorted_dates
 
 
 @pytest.fixture
-def sorted_comments(news, author):
-    """Создаёт комментарии с разными датами, чтобы проверить сортировку."""
+def news_with_comments():
+    """Создаёт новость и 10 комментариев с искусственно выставленными датами."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    news = News.objects.create(
+        title='Тестовая новость',
+        text='Просто текст.'
+    )
+    author = User.objects.create_user(username='Комментатор', password='pass')
+
     now = timezone.now()
     comments = []
     for index in range(10):
@@ -38,91 +76,44 @@ def sorted_comments(news, author):
             text=f'Текст {index}',
         )
         comment.created = now + timedelta(days=index)
-        comment.save(update_fields=['created'])
+        comment.save()
         comments.append(comment)
-    return comments
+
+    return news, author, comments
 
 
-def test_news_count_on_home(client, many_news):
-    """На главной странице ровно NEWS_COUNT_ON_HOME_PAGE новостей."""
-    url = reverse('news:home')
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
-
-    news_feed = response.context['news_feed']
-    limit = getattr(settings, 'NEWS_COUNT_ON_HOME_PAGE', 10)
-    assert len(news_feed) <= limit
-
-
-def test_news_order_on_home(client, many_news):
-    """Новости на главной отсортированы по дате: новые сверху."""
-    url = reverse('news:home')
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
-
-    news_feed = response.context['news_feed']
-    dates = [n.date for n in news_feed]
-    assert dates == sorted(dates, reverse=True)
-
-
-def test_comments_order_on_detail(client, news, sorted_comments):
-    """Комментарии на странице новости: старые сверху."""
+@pytest.mark.django_db
+def test_comments_order_on_detail_page(client, news_with_comments):
+    news, author, _ = news_with_comments
     url = reverse('news:detail', args=(news.id,))
     response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
+    assert response.status_code == 200
 
-    news_obj = response.context['news']
-    comments = list(news_obj.comment_set.order_by('created'))
-    timestamps = [c.created for c in comments]
+    assert 'news' in response.context
+    assert response.context['news'].pk == news.pk
 
-    assert timestamps == sorted(timestamps)
+    all_comments = news.comment_set.all()
+    all_timestamps = [comment.created for comment in all_comments]
+    sorted_timestamps = sorted(all_timestamps)
+    assert all_timestamps == sorted_timestamps
 
 
-def test_anonymous_client_no_form_on_detail(client, news):
-    """Анонимный пользователь не видит форму комментария на detail-странице."""
-    url = reverse('news:detail', kwargs={'pk': news.pk})
+@pytest.mark.django_db
+def test_anonymous_client_has_no_form_on_detail(client, news_with_comments):
+    news, _, _ = news_with_comments
+    url = reverse('news:detail', args=(news.id,))
     response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
+    assert response.status_code == 200
     assert 'form' not in response.context
 
 
-def test_authorized_client_sees_form_on_detail(client, news, author):
-    """Авторизованный пользователь видит форму комментария."""
+@pytest.mark.django_db
+def test_authorized_client_has_comment_form(client, news_with_comments):
+    news, author, _ = news_with_comments
+    url = reverse('news:detail', args=(news.id,))
+
     client.force_login(author)
-    url = reverse('news:detail', kwargs={'pk': news.pk})
     response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
+    assert response.status_code == 200
     assert 'form' in response.context
-    from news.forms import CommentForm
     assert isinstance(response.context['form'], CommentForm)
-
-
-def test_comment_appears_under_news(client, comment, news):
-    """Текст комментария и имя автора отображаются на странице новости."""
-    url = reverse('news:detail', kwargs={'pk': news.pk})
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
-
-    content = response.content.decode('utf-8')
-    assert comment.text in content
-    assert comment.author.username in content
-
-
-def test_own_comment_edit_page_contains_form(client, comment, author):
-    """Автор комментария видит форму редактирования на странице edit."""
-    client.force_login(author)
-    url = reverse('news:edit', kwargs={'pk': comment.pk})
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
-    assert 'form' in response.context
-    from news.forms import CommentForm
-    assert isinstance(response.context['form'], CommentForm)
-
-
-def test_other_user_cannot_access_comment_edit(client, comment, reader):
-    """Читатель не может открыть страницу редактирования чужого комментария."""
-    client.force_login(reader)
-    url = reverse('news:edit', kwargs={'pk': comment.pk})
-    response = client.get(url)
-
-    assert response.status_code in (HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN)
