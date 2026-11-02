@@ -1,16 +1,18 @@
 import pytest
 from http import HTTPStatus
-from pytest_django.asserts import assertRedirects
 from pytest_django.asserts import assertRedirects, assertFormError
-
 from notes.forms import WARNING
 from pytils.translit import slugify
 from django.urls import reverse
-
 from notes.models import Note
 
 
-def test_user_can_create_note(author_client, author, form_data):
+def test_user_can_create_note(author_client, author):
+    form_data = {
+        'title': 'Новая заметка',
+        'text': 'Текст заметки',
+        'slug': 'new-note-slug'
+    }
     url = reverse('notes:add')
     response = author_client.post(url, data=form_data)
     assertRedirects(response, reverse('notes:success'))
@@ -23,7 +25,12 @@ def test_user_can_create_note(author_client, author, form_data):
 
 
 @pytest.mark.django_db
-def test_anonymous_user_cant_create_note(client, form_data):
+def test_anonymous_user_cant_create_note(client):
+    form_data = {
+        'title': 'Заметка анонима',
+        'text': 'Текст от анонима',
+        'slug': 'anonymous-note'
+    }
     url = reverse('notes:add')
     response = client.post(url, data=form_data)
     login_url = reverse('users:login')
@@ -32,9 +39,13 @@ def test_anonymous_user_cant_create_note(client, form_data):
     assert Note.objects.count() == 0
 
 
-def test_not_unique_slug(author_client, note, form_data):
+def test_not_unique_slug(author_client, note):
+    form_data = {
+        'title': 'Дублирующая заметка',
+        'text': 'Текст дубликата',
+        'slug': note.slug
+    }
     url = reverse('notes:add')
-    form_data['slug'] = note.slug
     response = author_client.post(url, data=form_data)
     assertFormError(
         response.context['form'], 'slug', errors=(note.slug + WARNING)
@@ -42,9 +53,12 @@ def test_not_unique_slug(author_client, note, form_data):
     assert Note.objects.count() == 1
 
 
-def test_empty_slug(author_client, form_data):
+def test_empty_slug(author_client):
+    form_data = {
+        'title': 'Заметка без слэга',
+        'text': 'Текст заметки'
+    }
     url = reverse('notes:add')
-    form_data.pop('slug')
     response = author_client.post(url, data=form_data)
     assertRedirects(response, reverse('notes:success'))
     assert Note.objects.count() == 1
@@ -53,9 +67,14 @@ def test_empty_slug(author_client, form_data):
     assert new_note.slug == expected_slug
 
 
-def test_author_can_edit_note(author_client, form_data, note):
+def test_author_can_edit_note(author_client, note):
+    form_data = {
+        'title': 'Отредактированная заметка',
+        'text': 'Новый текст заметки',
+        'slug': 'edited-note-slug'
+    }
     url = reverse('notes:edit', args=(note.slug,))
-    response = author_client.post(url, form_data)
+    response = author_client.post(url, data=form_data)
     assertRedirects(response, reverse('notes:success'))
     note.refresh_from_db()
     assert note.title == form_data['title']
@@ -63,9 +82,14 @@ def test_author_can_edit_note(author_client, form_data, note):
     assert note.slug == form_data['slug']
 
 
-def test_other_user_cant_edit_note(not_author_client, form_data, note):
+def test_other_user_cant_edit_note(not_author_client, note):
+    form_data = {
+        'title': 'Попытка редактирования',
+        'text': 'Текст для редактирования',
+        'slug': 'other-user-slug'
+    }
     url = reverse('notes:edit', args=(note.slug,))
-    response = not_author_client.post(url, form_data)
+    response = not_author_client.post(url, data=form_data)
     assert response.status_code == HTTPStatus.NOT_FOUND
     note_from_db = Note.objects.get(id=note.id)
     assert note.title == note_from_db.title
