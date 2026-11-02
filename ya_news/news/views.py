@@ -95,32 +95,23 @@ class NewsDetailView(generic.View):
 
 
 class CommentBase(LoginRequiredMixin):
-    """Базовый класс для редактирования и удаления комментариев."""
-
     model = Comment
 
     def get_object(self, queryset=None):
-        """
-        Переопределяем get_object, чтобы проверить права ДО того,
-        как UpdateView/DeleteView начнёт работу.
-        """
         obj = super().get_object(queryset)
 
         if obj.author != self.request.user:
-            raise Http404("Комментарий не найден или у вас нет прав на его изменение/удаление")
+            raise Http404(
+                "Комментарий не найден или у вас нет прав " \
+                "на его изменение/удаление"
+            )
 
         return obj
 
     def dispatch(self, request, *args, **kwargs):
-        """
-        Сначала проверяем авторизацию через LoginRequiredMixin.
-        Если пользователь не авторизован — будет редирект (302).
-        Дальше логика уже контролируется через get_object.
-        """
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
-        """URL детальной страницы новости с якорем на комментарии."""
         comment = self.object
         base_url = reverse('news:detail', kwargs={'pk': comment.news.pk})
         return f'{base_url}#comments'
