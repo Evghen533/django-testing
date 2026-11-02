@@ -9,7 +9,7 @@ from news.forms import CommentForm
 
 @pytest.mark.django_db
 def test_news_count_on_home_page(client):
-    """На главной странице отображается ровно NEWS_COUNT_ON_HOME_PAGE новостей."""
+    """На главной странице отображается NEWS_COUNT_ON_HOME_PAGE новостей."""
     today = datetime.today()
     count_to_create = settings.NEWS_COUNT_ON_HOME_PAGE + 1
     all_news = [
@@ -26,7 +26,10 @@ def test_news_count_on_home_page(client):
     response = client.get(url)
     assert response.status_code == 200
     object_list = response.context['object_list']
-    news_count = object_list.count() if hasattr(object_list, 'count') else len(object_list)
+    news_count = object_list.count() if hasattr(
+        object_list,
+        'count'
+    ) else len(object_list)
     assert news_count == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
@@ -57,7 +60,7 @@ def test_news_order_on_home_page(client):
 
 @pytest.fixture
 def news_with_comments():
-    """Создаёт новость и 10 комментариев с искусственно выставленными датами."""
+    """Создаёт новость и 10 комментариев с искусственными датами."""
     from django.contrib.auth import get_user_model
     User = get_user_model()
 

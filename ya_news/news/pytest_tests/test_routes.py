@@ -64,5 +64,7 @@ def test_redirect_for_anonymous_on_comment_actions(client, comment):
         redirect_url = f'{login_url}?next={url}'
 
         response = client.get(url, follow=True)
-        assert any(redirect_url in redirect for redirect in response.redirect_chain)
+        assert any(
+            redirect_url in redirect for redirect in response.redirect_chain
+        )
         assert response.status_code == HTTPStatus.OK
