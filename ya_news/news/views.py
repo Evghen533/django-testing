@@ -102,7 +102,7 @@ class CommentBase(LoginRequiredMixin):
 
         if obj.author != self.request.user:
             raise Http404(
-                "Комментарий не найден или у вас нет прав " \
+                "Комментарий не найден или у вас нет прав "
                 "на его изменение/удаление"
             )
 
