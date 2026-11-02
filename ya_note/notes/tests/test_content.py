@@ -93,6 +93,7 @@ class ContentTests(TestCase):
         items = list(object_list)
         self.assertLessEqual(len(items), limit)
 
+
 def test_note_in_list_for_author(note, author_client):
     url = reverse('notes:list')
     response = author_client.get(url)
@@ -106,6 +107,7 @@ def test_note_not_in_list_for_another_user(note, not_author_client):
     object_list = response.context['object_list']
     assert note not in object_list
 
+
 @pytest.mark.parametrize(
     'parametrized_client, note_in_list',
     (
@@ -115,12 +117,15 @@ def test_note_not_in_list_for_another_user(note, not_author_client):
 )
 
 def test_notes_list_for_different_users(
-    note, parametrized_client, note_in_list
+    note,
+    parametrized_client,
+    note_in_list
 ):
     url = reverse('notes:list')
     response = parametrized_client.get(url)
     object_list = response.context['object_list']
     assert (note in object_list) is note_in_list
+
 
 def test_create_note_page_contains_form(author_client):
     url = reverse('notes:add')
@@ -134,6 +139,7 @@ def test_edit_note_page_contains_form(slug_for_args, author_client):
     response = author_client.get(url)
     assert 'form' in response.context
     assert isinstance(response.context['form'], NoteForm)
+
 
 @pytest.mark.parametrize(
     'name, args',
