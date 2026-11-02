@@ -7,6 +7,7 @@ from notes.models import Note
 from django.urls import reverse
 
 
+@pytest.mark.django_db
 def test_home_availability_for_anonymous_user(client):
     url = reverse('notes:home')
     response = client.get(url)
@@ -17,6 +18,7 @@ def test_home_availability_for_anonymous_user(client):
     'name',
     ('notes:home', 'users:login', 'users:signup'),
 )
+@pytest.mark.django_db
 def test_pages_availability_for_anonymous_user(client, name):
     url = reverse(name)
     response = client.get(url)
@@ -84,24 +86,26 @@ def test_pages_availability_for_different_users(
 
 
 @pytest.mark.parametrize(
-    'name, args_value',
-    (
-        ('notes:detail', True),
-        ('notes:edit', True),
-        ('notes:delete', True),
-        ('notes:add', False),
-        ('notes:success', False),
-        ('notes:list', False),
-    ),
+    'name, should_redirect, needs_slug',
+    [
+        ('notes:detail', True, True),
+        ('notes:edit', True, True),
+        ('notes:delete', True, True),
+        ('notes:add', True, False),
+        ('notes:success', False, False),
+        ('notes:list', False, False),
+        ('notes:home', False, False),
+    ],
 )
-def test_redirects(client, name, args_value, note):
-    if args_value:
-        args = (note.slug,)
-    else:
-        args = None
-
-    login_url = reverse('users:login')
+@pytest.mark.django_db
+def test_redirects(client, name, should_redirect, needs_slug, note):
+    args = (note.slug,) if needs_slug else None
     url = reverse(name, args=args)
-    expected_url = f'{login_url}?next={url}'
     response = client.get(url)
-    assertRedirects(response, expected_url)
+
+    if should_redirect:
+        login_url = reverse('users:login')
+        expected_url = f'{login_url}?next={url}'
+        assertRedirects(response, expected_url)
+    else:
+        assert response.status_code == HTTPStatus.OK
