@@ -25,6 +25,7 @@ def test_detail_page(client, news):
         ('users:signup', None),
     ],
 )
+@pytest.mark.django_db
 def test_public_pages_availability(client, name, args):
     url = reverse(name, args=args)
     response = client.get(url)
