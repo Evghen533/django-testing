@@ -47,6 +47,7 @@ def reader_client(reader, client):
     return client
 
 
+@pytest.mark.django_db
 def test_anonymous_cannot_create_comment(client, news):
     """Анонимный пользователь не может создать комментарий."""
     url = reverse('news:detail', args=(news.id,))
@@ -57,6 +58,7 @@ def test_anonymous_cannot_create_comment(client, news):
     assert Comment.objects.count() == 0
 
 
+@pytest.mark.django_db
 def test_authorized_user_can_create_comment(auth_client, news, user):
     """Авторизованный пользователь может создать комментарий к новости."""
     url = reverse('news:detail', args=(news.id,))
@@ -77,6 +79,7 @@ def test_authorized_user_can_create_comment(auth_client, news, user):
     assert comment.author == user
 
 
+@pytest.mark.django_db
 def test_comment_validation_bad_words(auth_client, news):
     """Форма отклоняет комментарий с запрещёнными словами."""
     url = reverse('news:detail', args=(news.id,))
@@ -94,6 +97,7 @@ def test_comment_validation_bad_words(auth_client, news):
     assert Comment.objects.count() == 0
 
 
+@pytest.mark.django_db
 def test_author_can_delete_comment(auth_client, comment, news):
     """Автор может удалить свой комментарий (DELETE-запрос)."""
     url = reverse('news:delete', args=(comment.id,))
@@ -105,6 +109,7 @@ def test_author_can_delete_comment(auth_client, comment, news):
     assert not Comment.objects.filter(pk=comment.pk).exists()
 
 
+@pytest.mark.django_db
 def test_other_user_cannot_delete_comment(reader_client, comment):
     """Другой пользователь не может удалить чужой комментарий — 404."""
     url = reverse('news:delete', args=(comment.id,))
@@ -114,6 +119,7 @@ def test_other_user_cannot_delete_comment(reader_client, comment):
     assert Comment.objects.filter(pk=comment.pk).exists()
 
 
+@pytest.mark.django_db
 def test_author_can_edit_comment(auth_client, comment, news):
     """Автор может отредактировать свой комментарий (POST)."""
     url = reverse('news:edit', args=(comment.id,))
@@ -129,6 +135,7 @@ def test_author_can_edit_comment(auth_client, comment, news):
     assert comment.text == new_text
 
 
+@pytest.mark.django_db
 def test_other_user_cannot_edit_comment(reader_client, comment):
     """Другой пользователь не может редактировать чужой комментарий — 404."""
     url = reverse('news:edit', args=(comment.id,))
