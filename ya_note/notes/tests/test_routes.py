@@ -93,7 +93,7 @@ def test_pages_availability_for_different_users(
         ('notes:delete', True, True),
         ('notes:add', True, False),
         ('notes:success', False, False),
-        ('notes:list', False, False),
+        ('notes:list', True, False),
         ('notes:home', False, False),
     ],
 )
@@ -108,4 +108,4 @@ def test_redirects(client, name, should_redirect, needs_slug, note):
         expected_url = f'{login_url}?next={url}'
         assertRedirects(response, expected_url)
     else:
-        assert response.status_code == HTTPStatus.OK
+        assert response.status_code == 200
