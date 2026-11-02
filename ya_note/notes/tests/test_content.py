@@ -115,7 +115,6 @@ def test_note_not_in_list_for_another_user(note, not_author_client):
         (pytest.lazy_fixture('not_author_client'), False),
     )
 )
-
 def test_notes_list_for_different_users(
     note,
     parametrized_client,
@@ -148,7 +147,6 @@ def test_edit_note_page_contains_form(slug_for_args, author_client):
         ('notes:edit', pytest.lazy_fixture('slug_for_args'))
     )
 )
-
 def test_pages_contains_form(author_client, name, args):
     url = reverse(name, args=args)
     response = author_client.get(url)
