@@ -2,7 +2,7 @@
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import Http404
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views import generic
