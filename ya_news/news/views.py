@@ -2,7 +2,7 @@
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views import generic
@@ -107,7 +107,7 @@ class CommentBase(LoginRequiredMixin):
         obj = super().get_object(queryset)
 
         if obj.author != self.request.user:
-            raise PermissionDenied()
+            raise Http404("Комментарий не найден или у вас нет прав на его изменение/удаление")
 
         return obj
 

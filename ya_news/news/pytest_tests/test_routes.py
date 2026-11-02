@@ -38,6 +38,7 @@ def test_news_detail_with_existing_news(client, news):
     assert response.status_code == HTTPStatus.OK
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "user_fixture,expected_status",
     [
@@ -58,6 +59,7 @@ def test_comment_edit_and_delete_access(
         assert response.status_code == expected_status
 
 
+@pytest.mark.django_db
 def test_redirect_for_anonymous_on_comment_actions(client, comment):
     login_url = reverse('users:login')
     actions = ['news:edit', 'news:delete']
