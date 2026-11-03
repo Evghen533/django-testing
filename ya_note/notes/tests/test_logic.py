@@ -1,18 +1,22 @@
-import unittest
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from notes.models import Note
 from pytils.translit import slugify
-from notes.forms import WARNING
 
 
 class LogicTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         User = get_user_model()
-        cls.author = User.objects.create_user(username='author', password='123')
-        cls.not_author = User.objects.create_user(username='not_author', password='123')
+        cls.author = User.objects.create_user(
+            username='author',
+            password='123'
+        )
+        cls.not_author = User.objects.create_user(
+            username='not_author',
+            password='123'
+        )
 
         cls.note = Note.objects.create(
             title='Test note',
@@ -22,7 +26,6 @@ class LogicTests(TestCase):
         )
 
     def setUp(self):
-        # Логиним автора для большинства тестов
         self.client.force_login(self.author)
 
     def _logout(self):
@@ -39,7 +42,7 @@ class LogicTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse('notes:success'))
-        self.assertEqual(Note.objects.count(), 2)  # старая + новая
+        self.assertEqual(Note.objects.count(), 2)
 
         new_note = Note.objects.exclude(id=self.note.id).get()
         self.assertEqual(new_note.title, form_data['title'])
@@ -60,7 +63,6 @@ class LogicTests(TestCase):
         login_url = reverse('users:login')
         expected_next = f'{login_url}?next={url}'
         self.assertRedirects(response, expected_next)
-        # Заметка не создана: осталась только исходная
         self.assertEqual(Note.objects.count(), 1)
 
     def test_not_unique_slug(self):
@@ -72,13 +74,24 @@ class LogicTests(TestCase):
         url = reverse('notes:add')
         response = self.client.post(url, data=form_data)
 
-        self.assertEqual(response.status_code, 200, "Ожидался статус 200 (страница с формой), а не редирект/ошибка")
-        self.assertIn('form', response.context, "В контексте ответа нет формы")
+        self.assertEqual(
+            response.status_code, 200,
+            "Ожидался статус 200 (страница с формой), а не редирект/ошибка"
+        )
+        self.assertIn(
+            'form',
+            response.context,
+            "В контексте ответа нет формы"
+        )
 
         form = response.context['form']
         self.assertTrue(form.is_bound, "Форма не привязана к данным")
 
-        self.assertIn('slug', form.errors, "При дубликате slug не возникла ошибка валидации в поле slug")
+        self.assertIn(
+            'slug',
+            form.errors,
+            "При дубликате slug не возникла ошибка валидации в поле slug"
+        )
 
         self.assertEqual(Note.objects.count(), 1)
 

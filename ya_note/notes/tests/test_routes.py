@@ -1,4 +1,3 @@
-import unittest
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
@@ -8,7 +7,10 @@ class RoutesTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         User = get_user_model()
-        cls.author = User.objects.create_user(username='author', password='123')
+        cls.author = User.objects.create_user(
+            username='author',
+            password='123'
+        )
 
     def setUp(self):
         self.client.force_login(self.author)
@@ -74,7 +76,10 @@ class RoutesTests(TestCase):
 
     def test_detail_edit_delete_unavailable_for_other_user(self):
         User = get_user_model()
-        not_author = User.objects.create_user(username='not_author', password='123')
+        not_author = User.objects.create_user(
+            username='not_author',
+            password='123'
+        )
 
         from notes.models import Note
         note = Note.objects.create(
@@ -99,7 +104,7 @@ class RoutesTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_redirects_for_anonymous(self):
-        """Проверка, что аноним получает редирект на login для защищённых страниц."""
+        """Аноним получает редирект на login для защищённых страниц."""
         login_url = reverse('users:login')
 
         protected_urls = [
