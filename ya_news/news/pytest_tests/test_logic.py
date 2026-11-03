@@ -137,7 +137,6 @@ def test_author_can_edit_comment(auth_client, comment, news):
 
 @pytest.mark.django_db
 def test_other_user_cannot_edit_comment(reader_client, comment):
-    """Другой пользователь не может редактировать чужой комментарий — 404."""
     url = reverse('news:edit', args=(comment.id,))
     new_text = 'Попытка подмены'
     form_data = {'text': new_text}
@@ -146,4 +145,4 @@ def test_other_user_cannot_edit_comment(reader_client, comment):
     assert response.status_code == HTTPStatus.NOT_FOUND
 
     comment.refresh_from_db()
-    assert comment.text != new_text
+    assert comment.text == 'Комментарий к новости'

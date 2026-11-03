@@ -44,6 +44,8 @@ class NewsDetail(generic.DetailView):
         context = super().get_context_data(**kwargs)
         if self.request.user.is_authenticated:
             context['form'] = CommentForm()
+
+        context['comments'] = self.object.comment_set.order_by('created')
         return context
 
 
