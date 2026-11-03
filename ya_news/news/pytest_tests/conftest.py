@@ -40,7 +40,7 @@ def comment(news, author):
     return Comment.objects.create(
         news=news,
         author=author,
-        text='Комментарий к новости',
+        text='Текст комментария',
     )
 
 

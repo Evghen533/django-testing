@@ -145,4 +145,4 @@ def test_other_user_cannot_edit_comment(reader_client, comment):
     assert response.status_code == HTTPStatus.NOT_FOUND
 
     comment.refresh_from_db()
-    assert comment.text == 'Комментарий к новости'
+    assert comment.text == 'Текст комментария'
