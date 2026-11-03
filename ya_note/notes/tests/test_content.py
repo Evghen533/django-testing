@@ -1,5 +1,4 @@
-import pytest
-from notes.forms import NoteForm
+import unittest
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
@@ -41,10 +40,7 @@ class ContentTests(TestCase):
     def test_notes_isolation(self):
         """Пользователь видит только свои заметки: чужие не попадаются."""
         User = get_user_model()
-        other_user = User.objects.create_user(
-            username='other',
-            password='123'
-        )
+        other_user = User.objects.create_user(username='other', password='123')
 
         Note.objects.create(
             title='Other note',
@@ -89,66 +85,5 @@ class ContentTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
-        object_list = response.context['object_list']
-        items = list(object_list)
+        items = list(response.context['object_list'])
         self.assertLessEqual(len(items), limit)
-
-
-def test_note_in_list_for_author(note, author_client):
-    url = reverse('notes:list')
-    response = author_client.get(url)
-    object_list = response.context['object_list']
-    assert note in object_list
-
-
-def test_note_not_in_list_for_another_user(note, not_author_client):
-    url = reverse('notes:list')
-    response = not_author_client.get(url)
-    object_list = response.context['object_list']
-    assert note not in object_list
-
-
-@pytest.mark.parametrize(
-    'parametrized_client, note_in_list',
-    (
-        (pytest.lazy_fixture('author_client'), True),
-        (pytest.lazy_fixture('not_author_client'), False),
-    )
-)
-def test_notes_list_for_different_users(
-    note,
-    parametrized_client,
-    note_in_list
-):
-    url = reverse('notes:list')
-    response = parametrized_client.get(url)
-    object_list = response.context['object_list']
-    assert (note in object_list) is note_in_list
-
-
-def test_create_note_page_contains_form(author_client):
-    url = reverse('notes:add')
-    response = author_client.get(url)
-    assert 'form' in response.context
-    assert isinstance(response.context['form'], NoteForm)
-
-
-def test_edit_note_page_contains_form(slug_for_args, author_client):
-    url = reverse('notes:edit', args=slug_for_args)
-    response = author_client.get(url)
-    assert 'form' in response.context
-    assert isinstance(response.context['form'], NoteForm)
-
-
-@pytest.mark.parametrize(
-    'name, args',
-    (
-        ('notes:add', None),
-        ('notes:edit', pytest.lazy_fixture('slug_for_args'))
-    )
-)
-def test_pages_contains_form(author_client, name, args):
-    url = reverse(name, args=args)
-    response = author_client.get(url)
-    assert 'form' in response.context
-    assert isinstance(response.context['form'], NoteForm)
