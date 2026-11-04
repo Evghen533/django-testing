@@ -108,9 +108,10 @@ class TestDetailPage(TestCase):
         # Проверим, что объект формы соответствует нужному классу формы.
         self.assertIsInstance(response.context['form'], CommentForm)
 
+
 @pytest.mark.django_db
 def test_news_count_on_home_page(client):
-    """На главной странице не более settings.NEWS_COUNT_ON_HOME_PAGE новостей."""
+    """На главной странице settings.NEWS_COUNT_ON_HOME_PAGE новостей."""
     url = reverse('news:home')
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
@@ -147,7 +148,7 @@ def test_news_order_on_home_page(client):
 @pytest.mark.django_db
 def test_comments_order_on_detail_page(client, news):
     """Комментарии на странице новости отсортированы от старых к новым."""
-    author = comment_follower = None  # см. пояснение ниже
+    author = None  # см. пояснение ниже
     # Создаём пользователя и комментарии с разными датами
     from django.contrib.auth import get_user_model
     User = get_user_model()
