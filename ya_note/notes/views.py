@@ -1,4 +1,6 @@
 from django.http import Http404
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import (
     ListView,
@@ -86,6 +88,7 @@ class NoteDelete(LoginRequiredMixin, DeleteView):
         return obj
 
 
+@method_decorator(login_required, name='dispatch')
 class NoteSuccess(TemplateView):
     """Страница успеха после создания заметки."""
     template_name = 'notes/success.html'

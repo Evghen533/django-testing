@@ -1,148 +1,259 @@
 import pytest
 from http import HTTPStatus
+
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase
 from django.urls import reverse
-from news.models import News, Comment
+
+# Импортируем из файла с формами список стоп-слов и предупреждение формы.
+# Загляните в news/forms.py, разберитесь с их назначением.
 from news.forms import BAD_WORDS, WARNING
+from news.models import Comment, News
+
+LOGIN_URL = reverse('users:login')
+
+User = get_user_model()
 
 
-@pytest.fixture
-def news():
-    """Одна тестовая новость."""
-    return News.objects.create(title='Заголовок', text='Текст')
+class TestCommentCreation(TestCase):
+    # Текст комментария понадобится в нескольких местах кода,
+    # поэтому запишем его в атрибуты класса.
+    COMMENT_TEXT = 'Текст комментария'
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.news = News.objects.create(title='Заголовок', text='Текст')
+        # Адрес страницы с новостью.
+        cls.url = reverse('news:detail', args=(cls.news.id,))
+        # Создаём пользователя и клиент, логинимся в клиенте.
+        cls.user = User.objects.create(username='Мимо Крокодил')
+        cls.auth_client = Client()
+        cls.auth_client.force_login(cls.user)
+        # Данные для POST-запроса при создании комментария.
+        cls.form_data = {'text': cls.COMMENT_TEXT}
+
+    def test_anonymous_user_cant_create_comment(self):
+        # Совершаем запрос от анонимного клиента, в POST-запросе отправляем
+        # предварительно подготовленные данные формы с текстом комментария.
+        self.client.post(self.url, data=self.form_data)
+        # Считаем количество комментариев.
+        comments_count = Comment.objects.count()
+        # Ожидаем, что комментариев в базе нет - сравниваем с нулём.
+        self.assertEqual(comments_count, 0)
+
+    def test_user_can_create_comment(self):
+        # Совершаем запрос через авторизованный клиент.
+        response = self.auth_client.post(self.url, data=self.form_data)
+        # Проверяем, что редирект привёл к разделу с комментами.
+        self.assertRedirects(response, f'{self.url}#comments')
+        # Считаем количество комментариев.
+        comments_count = Comment.objects.count()
+        # Убеждаемся, что есть один комментарий.
+        self.assertEqual(comments_count, 1)
+        # Получаем объект комментария из базы.
+        comment = Comment.objects.get()
+        # Проверяем, что все атрибуты комментария совпадают с ожидаемыми.
+        self.assertEqual(comment.text, self.COMMENT_TEXT)
+        self.assertEqual(comment.news, self.news)
+        self.assertEqual(comment.author, self.user)
+
+    def test_user_cant_use_bad_words(self):
+        # Формируем данные для отправки формы; текст включает
+        # первое слово из списка стоп-слов.
+        bad_words_data = {'text': f'Какой-то текст, {BAD_WORDS[0]}, еще текст'}
+        # Отправляем запрос через авторизованный клиент.
+        response = self.auth_client.post(self.url, data=bad_words_data)
+        form = response.context['form']
+        # Проверяем, есть ли в ответе ошибка формы.
+        self.assertFormError(
+            form=form,
+            field='text',
+            errors=WARNING
+        )
+        # Дополнительно убедимся, что комментарий не был создан.
+        comments_count = Comment.objects.count()
+        self.assertEqual(comments_count, 0)
 
 
-@pytest.fixture
-def user():
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    return User.objects.create_user(username='Мимо Крокодил', password='pass')
+class TestCommentEditDelete(TestCase):
+    # Тексты для комментариев не нужно дополнительно создавать
+    # (в отличие от объектов в БД), им не нужны ссылки на self или cls,
+    # поэтому их можно перечислить просто в атрибутах класса.
+    COMMENT_TEXT = 'Текст комментария'
+    NEW_COMMENT_TEXT = 'Обновлённый комментарий'
 
+    @classmethod
+    def setUpTestData(cls):
+        # Создаём новость в БД.
+        cls.news = News.objects.create(title='Заголовок', text='Текст')
+        # Формируем адрес блока с комментариями, который понадобится для тестов.
+        news_url = reverse('news:detail', args=(cls.news.id,))  # Адрес новости.
+        cls.url_to_comments = news_url + '#comments'  # Адрес блока с комментариями.
+        # Создаём пользователя - автора комментария.
+        cls.author = User.objects.create(username='Автор комментария')
+        # Создаём клиент для пользователя-автора.
+        cls.author_client = Client()
+        # "Логиним" пользователя в клиенте.
+        cls.author_client.force_login(cls.author)
+        # Делаем всё то же самое для пользователя-читателя.
+        cls.reader = User.objects.create(username='Читатель')
+        cls.reader_client = Client()
+        cls.reader_client.force_login(cls.reader)
+        # Создаём объект комментария.
+        cls.comment = Comment.objects.create(
+            news=cls.news,
+            author=cls.author,
+            text=cls.COMMENT_TEXT
+        )
+        # URL для редактирования комментария.
+        cls.edit_url = reverse('news:edit', args=(cls.comment.id,))
+        # URL для удаления комментария.
+        cls.delete_url = reverse('news:delete', args=(cls.comment.id,))
+        # Формируем данные для POST-запроса по обновлению комментария.
+        cls.form_data = {'text': cls.NEW_COMMENT_TEXT}
 
-@pytest.fixture
-def auth_client(user, client):
-    client.force_login(user)
-    return client
+    def test_author_can_delete_comment(self):
+        # От имени автора комментария отправляем DELETE-запрос на удаление.
+        response = self.author_client.delete(self.delete_url)
+        # Проверяем, что редирект привёл к разделу с комментариями.
+        self.assertRedirects(response, self.url_to_comments)
+        # Заодно проверим статус-коды ответов.
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
+        # Считаем количество комментариев в системе.
+        comments_count = Comment.objects.count()
+        # Ожидаем ноль комментариев в системе.
+        self.assertEqual(comments_count, 0)
 
+    def test_user_cant_delete_comment_of_another_user(self):
+        # Выполняем запрос на удаление от пользователя-читателя.
+        response = self.reader_client.delete(self.delete_url)
+        # Проверяем, что вернулась 404 ошибка.
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        # Убедимся, что комментарий по-прежнему на месте.
+        comments_count = Comment.objects.count()
+        self.assertEqual(comments_count, 1)
 
-@pytest.fixture
-def comment(news, user):
-    """Комментарий, принадлежащий пользователю."""
-    return Comment.objects.create(
-        news=news,
-        author=user,
-        text='Текст комментария'
-    )
+    def test_author_can_edit_comment(self):
+        # Выполняем запрос на редактирование от имени автора комментария.
+        response = self.author_client.post(self.edit_url, data=self.form_data)
+        # Проверяем, что сработал редирект.
+        self.assertRedirects(response, self.url_to_comments)
+        # Обновляем объект комментария.
+        self.comment.refresh_from_db()
+        # Проверяем, что текст комментария соответствует обновленному.
+        self.assertEqual(self.comment.text, self.NEW_COMMENT_TEXT)
 
-
-@pytest.fixture
-def reader():
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    return User.objects.create_user(username='Читатель', password='pass')
-
-
-@pytest.fixture
-def reader_client(reader, client):
-    client.force_login(reader)
-    return client
-
+    def test_user_cant_edit_comment_of_another_user(self):
+        # Выполняем запрос на редактирование от имени другого пользователя.
+        response = self.reader_client.post(self.edit_url, data=self.form_data)
+        # Проверяем, что вернулась 404 ошибка.
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        # Обновляем объект комментария.
+        self.comment.refresh_from_db()
+        # Проверяем, что текст остался тем же, что и был.
+        self.assertEqual(self.comment.text, self.COMMENT_TEXT)
 
 @pytest.mark.django_db
-def test_anonymous_cannot_create_comment(client, news):
-    """Анонимный пользователь не может создать комментарий."""
+def test_anonymous_cannot_create_comment(client, news, form_data):
+    """Аноним не может отправить комментарий: редирект на логин."""
     url = reverse('news:detail', args=(news.id,))
-    form_data = {'text': 'Текст комментария'}
+    initial_count = Comment.objects.count()
+
     response = client.post(url, data=form_data)
 
-    assert response.status_code in (301, 302)
-    assert Comment.objects.count() == 0
+    expected_redirect = f'{LOGIN_URL}?next={url}'
+    assert response.status_code == HTTPStatus.FOUND
+    assert response.url == expected_redirect
+    assert Comment.objects.count() == initial_count
 
 
 @pytest.mark.django_db
-def test_authorized_user_can_create_comment(auth_client, news, user):
-    """Авторизованный пользователь может создать комментарий к новости."""
+def test_authorized_user_can_create_comment(
+    author_client, news, form_data
+):
+    """Авторизованный пользователь может отправить комментарий."""
     url = reverse('news:detail', args=(news.id,))
-    comment_text = 'Текст комментария'
-    form_data = {'text': comment_text}
 
-    response = auth_client.post(url, data=form_data)
+    response = author_client.post(url, data=form_data)
 
-    expected_redirect = f'{url}#comments'
-    assert response.status_code in (301, 302)
-    assert response.url == expected_redirect
-
-    comments = Comment.objects.all()
-    assert comments.count() == 1
-    comment = comments.first()
-    assert comment.text == comment_text
+    assert response.status_code == HTTPStatus.FOUND
+    assert Comment.objects.count() == 1
+    comment = Comment.objects.get()
+    assert comment.text == form_data['text']
+    assert comment.author is not None
     assert comment.news == news
-    assert comment.author == user
 
 
 @pytest.mark.django_db
-def test_comment_validation_bad_words(auth_client, news):
-    """Форма отклоняет комментарий с запрещёнными словами."""
+def test_comment_validation_bad_words(
+    author_client, news, bad_words_data
+):
+    """Комментарий с запрещёнными словами не публикуется."""
     url = reverse('news:detail', args=(news.id,))
-    bad_text = f'Какой-то текст, {BAD_WORDS[0]}, еще текст'
-    form_data = {'text': bad_text}
+    initial_count = Comment.objects.count()
 
-    response = auth_client.post(url, data=form_data)
-    assert response.status_code == 200
+    response = author_client.post(url, data=bad_words_data)
 
-    form = response.context.get('form')
-    assert form is not None
+    assert response.status_code == HTTPStatus.OK
+    form = response.context['form']
     assert 'text' in form.errors
-    assert WARNING in form.errors['text']
-
-    assert Comment.objects.count() == 0
+    assert Comment.objects.count() == initial_count
 
 
 @pytest.mark.django_db
-def test_author_can_delete_comment(auth_client, comment, news):
-    """Автор может удалить свой комментарий (DELETE-запрос)."""
-    url = reverse('news:delete', args=(comment.id,))
-    expected_redirect = f"{reverse('news:detail', args=(news.id,))}#comments"
+@pytest.mark.parametrize(
+    'action_name',
+    ['news:edit', 'news:delete'],
+)
+def test_author_can_edit_and_delete_own_comment(
+    author_client, comment, action_name
+):
+    """Автор может редактировать и удалять свои комментарии."""
+    url = reverse(action_name, args=(comment.id,))
+    form_data = {'text': 'Обновлённый текст комментария'}
 
-    response = auth_client.delete(url)
-    assert response.status_code in (301, 302)
-    assert response.url == expected_redirect
-    assert not Comment.objects.filter(pk=comment.pk).exists()
+    response = author_client.post(url, data=form_data)
 
-
-@pytest.mark.django_db
-def test_other_user_cannot_delete_comment(reader_client, comment):
-    """Другой пользователь не может удалить чужой комментарий — 404."""
-    url = reverse('news:delete', args=(comment.id,))
-
-    response = reader_client.delete(url)
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert Comment.objects.filter(pk=comment.pk).exists()
-
-
-@pytest.mark.django_db
-def test_author_can_edit_comment(auth_client, comment, news):
-    """Автор может отредактировать свой комментарий (POST)."""
-    url = reverse('news:edit', args=(comment.id,))
-    new_text = 'Обновлённый комментарий'
-    form_data = {'text': new_text}
-    expected_redirect = f"{reverse('news:detail', args=(news.id,))}#comments"
-
-    response = auth_client.post(url, data=form_data)
-    assert response.status_code in (301, 302)
-    assert response.url == expected_redirect
-
+    assert response.status_code == HTTPStatus.FOUND
     comment.refresh_from_db()
-    assert comment.text == new_text
+    if action_name == 'news:edit':
+        assert comment.text == form_data['text']
+    else:
+        assert not Comment.objects.filter(pk=comment.pk).exists()
 
 
 @pytest.mark.django_db
-def test_other_user_cannot_edit_comment(reader_client, comment):
-    url = reverse('news:edit', args=(comment.id,))
-    new_text = 'Попытка подмены'
-    form_data = {'text': new_text}
+@pytest.mark.parametrize(
+    'action_name',
+    ['news:edit', 'news:delete'],
+)
+def test_other_user_cannot_edit_or_delete_foreign_comment(
+    reader_client, comment, action_name
+):
+    """Чужой пользователь не может редактировать и удалять комментарии."""
+    url = reverse(action_name, args=(comment.id,))
+    original_text = comment.text
 
-    response = reader_client.post(url, data=form_data)
+    response = reader_client.post(url, data={'text': 'Попытка подмены'})
+
     assert response.status_code == HTTPStatus.NOT_FOUND
-
     comment.refresh_from_db()
-    assert comment.text == 'Текст комментария'
+    assert comment.text == original_text
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'action_name',
+    ['news:edit', 'news:delete'],
+)
+def test_anonymous_cannot_edit_or_delete_comment(
+    client, comment, action_name
+):
+    """Аноним на страницы правки и удаления перенаправляется на логин."""
+    url = reverse(action_name, args=(comment.id,))
+
+    response = client.post(url, data={'text': 'Попытка анонима'})
+
+    expected_redirect = f'{LOGIN_URL}?next={url}'
+    assert response.status_code == HTTPStatus.FOUND
+    assert response.url == expected_redirect
