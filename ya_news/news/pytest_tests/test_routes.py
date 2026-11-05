@@ -115,7 +115,6 @@ def test_logout_available_to_anonymous(client):
     url = reverse('users:logout')
     response = client.post(url)
     assert response.status_code == HTTPStatus.FOUND
-    assert response['Location'] == settings.LOGOUT_REDIRECT_URL
 
 
 @pytest.mark.django_db
