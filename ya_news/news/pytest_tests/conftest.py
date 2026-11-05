@@ -4,6 +4,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from datetime import date
 from news.models import News, Comment
+from news.forms import BAD_WORDS, WARNING
 
 
 @pytest.fixture
@@ -74,3 +75,12 @@ def reader_client(reader, client):
     """Клиент, авторизованный под читателем (не автором)."""
     client.force_login(reader)
     return client
+
+
+@pytest.fixture
+def bad_words_data():
+    """Данные для проверки запрета плохих слов в комментарии."""
+    return {
+        'text': f'Какая-то {BAD_WORDS[0]} редакция!',
+        'warning': WARNING,
+    }

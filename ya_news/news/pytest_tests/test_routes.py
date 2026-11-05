@@ -102,12 +102,19 @@ def test_detail_page_available_to_anonymous(client, news):
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     'name',
-    ['users:signup', 'users:login', 'users:logout'],
+    ['users:signup', 'users:login'],
 )
 def test_auth_pages_available_to_anonymous(client, name):
     """Страницы регистрации, входа и выхода доступны анонимам."""
     response = client.get(reverse(name))
     assert response.status_code in (HTTPStatus.OK, HTTPStatus.FOUND)
+
+
+def test_logout_available_to_anonymous(client):
+    url = reverse('users:logout')
+    response = client.post(url)
+    assert response.status_code == HTTPStatus.FOUND
+    assert response['Location'].endswith('/login/')
 
 
 @pytest.mark.django_db

@@ -216,8 +216,8 @@ def test_author_can_edit_and_delete_own_comment(
     response = author_client.post(url, data=form_data)
 
     assert response.status_code == HTTPStatus.FOUND
-    comment.refresh_from_db()
     if action_name == 'news:edit':
+        comment.refresh_from_db()
         assert comment.text == form_data['text']
     else:
         assert not Comment.objects.filter(pk=comment.pk).exists()
