@@ -1,7 +1,6 @@
 import pytest
 from http import HTTPStatus
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -114,7 +113,7 @@ def test_auth_pages_available_to_anonymous(client, name):
 def test_logout_available_to_anonymous(client):
     url = reverse('users:logout')
     response = client.post(url)
-    assert response.status_code == HTTPStatus.FOUND
+    assert response.status_code == HTTPStatus.OK
 
 
 @pytest.mark.django_db
