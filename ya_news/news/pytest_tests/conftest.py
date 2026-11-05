@@ -45,13 +45,6 @@ def comment(news, author):
 
 
 @pytest.fixture
-def client():
-    """Клиент для запросов в тестах Django."""
-    from django.test import Client
-    return Client()
-
-
-@pytest.fixture
 def news_form_data():
     """Данные для создания новости (без slug)."""
     return {
@@ -67,3 +60,17 @@ def form_data():
         'text': 'Новый текст',
         'slug': 'new-slug'
     }
+
+
+@pytest.fixture
+def author_client(author, client):
+    """Клиент, авторизованный под автором."""
+    client.force_login(author)
+    return client
+
+
+@pytest.fixture
+def reader_client(reader, client):
+    """Клиент, авторизованный под читателем (не автором)."""
+    client.force_login(reader)
+    return client
