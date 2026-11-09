@@ -1,197 +1,88 @@
-import pytest
+from datetime import timedelta
 from http import HTTPStatus
-from django.conf import settings
-from django.test import TestCase
-from django.contrib.auth import get_user_model
-from datetime import datetime, timedelta
-from django.urls import reverse
-from news.forms import CommentForm
 
+import pytest
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.urls import reverse
 from django.utils import timezone
-from news.models import News, Comment
+
+from news.forms import CommentForm
+from news.models import Comment, News
 
 HOME_URL = reverse('news:home')
 
 User = get_user_model()
 
 
-class TestHomePage(TestCase):
-
-    HOME_URL = reverse('news:home')
-
-    @classmethod
-    def setUpTestData(cls):
-        # Вычисляем текущую дату.
-        today = datetime.today()
-        all_news = [
-            News(
-                title=f'Новость {index}',
-                text='Просто текст.',
-                # Для каждой новости уменьшаем дату на index дней от today,
-                # где index - счётчик цикла.
-                date=today - timedelta(days=index)
-            )
-            for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
-        ]
-        News.objects.bulk_create(all_news)
-
-    def test_news_count(self):
-        # Загружаем главную страницу.
-        response = self.client.get(self.HOME_URL)
-        # Код ответа не проверяем, его уже проверили в тестах маршрутов.
-        # Получаем список объектов из словаря контекста.
-        object_list = response.context['object_list']
-        # Определяем количество записей в списке.
-        news_count = object_list.count()
-        # Проверяем, что на странице именно 10 новостей.
-        self.assertEqual(news_count, settings.NEWS_COUNT_ON_HOME_PAGE)
-
-    def test_news_order(self):
-        response = self.client.get(self.HOME_URL)
-        object_list = response.context['object_list']
-        # Получаем даты новостей в том порядке, как они выведены на странице.
-        all_dates = [news.date for news in object_list]
-        # Сортируем полученный список по убыванию.
-        sorted_dates = sorted(all_dates, reverse=True)
-        # Проверяем, что исходный список был отсортирован правильно.
-        self.assertEqual(all_dates, sorted_dates)
-
-
-class TestDetailPage(TestCase):
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.news = News.objects.create(
-            title='Тестовая новость', text='Просто текст.'
-        )
-        # Сохраняем в переменную адрес страницы с новостью:
-        cls.detail_url = reverse('news:detail', args=(cls.news.id,))
-        cls.author = User.objects.create(username='Комментатор')
-        # Запоминаем текущее время:
-        now = timezone.now()
-        # Создаём комментарии в цикле.
-        for index in range(10):
-            # Создаём объект и записываем его в переменную.
-            comment = Comment.objects.create(
-                news=cls.news, author=cls.author, text=f'Tекст {index}',
-            )
-            # Сразу после создания меняем время создания комментария.
-            comment.created = now + timedelta(days=index)
-            # И сохраняем эти изменения.
-            comment.save()
-
-    def test_comments_order(self):
-        response = self.client.get(self.detail_url)
-        # Проверяем, что объект новости находится в словаре контекста
-        # под ожидаемым именем - названием модели.
-        self.assertIn('news', response.context)
-        # Получаем объект новости.
-        news = response.context['news']
-        # Получаем все комментарии к новости.
-        all_comments = news.comment_set.all()
-        # Собираем временные метки всех комментариев.
-        all_timestamps = [comment.created for comment in all_comments]
-        # Сортируем временные метки, менять порядок сортировки не надо.
-        sorted_timestamps = sorted(all_timestamps)
-        # Проверяем, что временные метки отсортированы правильно.
-        self.assertEqual(all_timestamps, sorted_timestamps)
-
-    def test_anonymous_client_has_no_form(self):
-        response = self.client.get(self.detail_url)
-        self.assertNotIn('form', response.context)
-
-    def test_authorized_client_has_form(self):
-        # Авторизуем клиент при помощи ранее созданного пользователя.
-        self.client.force_login(self.author)
-        response = self.client.get(self.detail_url)
-        self.assertIn('form', response.context)
-        # Проверим, что объект формы соответствует нужному классу формы.
-        self.assertIsInstance(response.context['form'], CommentForm)
-
-
 @pytest.mark.django_db
 def test_news_count_on_home_page(client):
-    """На главной странице settings.NEWS_COUNT_ON_HOME_PAGE новостей."""
-    url = reverse('news:home')
-    response = client.get(url)
+    """На главной странице не более NEWS_COUNT_ON_HOME_PAGE новостей."""
+    today = timezone.now()
+    News.objects.bulk_create(
+        News(
+            title=f'Новость {index}',
+            text='Просто текст.',
+            date=today - timedelta(days=index),
+        )
+        for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
+    )
+    response = client.get(HOME_URL)
     assert response.status_code == HTTPStatus.OK
-    news_count = response.context['object_list'].count()
-    assert news_count <= settings.NEWS_COUNT_ON_HOME_PAGE
+    object_list = response.context['object_list']
+    assert object_list.count() == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
 @pytest.mark.django_db
 def test_news_order_on_home_page(client):
-    """Новости отсортированы от свежих к старым."""
-    # Публикуем дюжину новостей с разными датами
+    """Новости отсортированы от самых свежих к самым старым."""
     today = timezone.now()
-    all_news = []
-    for index in range(12):
-        news = News.objects.create(
+    News.objects.bulk_create(
+        News(
             title=f'Новость {index}',
-            text='Текст новости',
-            # Чем больше index, тем старее дата
+            text='Просто текст.',
             date=today - timedelta(days=index),
         )
-        all_news.append(news)
-
+        for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
+    )
     response = client.get(HOME_URL)
     object_list = response.context['object_list']
-    # Сравниваем порядок: первые новости — самые свежие
-    expected = News.objects.order_by('-date')[
-        :settings.NEWS_COUNT_ON_HOME_PAGE
-    ]
-    actual_pks = [news.pk for news in object_list]
-    expected_pks = [news.pk for news in expected]
-    assert actual_pks == expected_pks
+    all_dates = [news.date for news in object_list]
+    assert all_dates == sorted(all_dates, reverse=True)
 
 
 @pytest.mark.django_db
 def test_comments_order_on_detail_page(client, news):
-    """Комментарии на странице новости отсортированы от старых к новым."""
-    author = None  # см. пояснение ниже
-    # Создаём пользователя и комментарии с разными датами
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    author = User.objects.create_user(username='Автор',
-                                      password='password')
-
+    """Комментарии на странице новости идут от старых к новым."""
+    author = User.objects.create(username='Комментатор')
     now = timezone.now()
-    comments_created = []
-    for index in range(3):
-        comment = Comment.objects.create(
+    Comment.objects.bulk_create(
+        Comment(
             news=news,
             author=author,
-            text=f'Комментарий {index}',
-            # Каждый следующий комментарий старее
+            text=f'Текст {index}',
             created=now + timedelta(days=index),
         )
-        comments_created.append(comment)
-
-    url = reverse('news:detail', args=(news.id,))
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
-
+        for index in range(3)
+    )
+    response = client.get(reverse('news:detail', args=(news.id,)))
     comments = response.context['news'].comment_set.all()
-    comments_pks = [comment.pk for comment in comments]
-    expected_pks = [
-        comment.pk for comment in comments_created
-    ]
-    assert comments_pks == expected_pks
+    all_timestamps = [comment.created for comment in comments]
+    assert all_timestamps == sorted(all_timestamps)
 
 
 @pytest.mark.django_db
-def test_anonymous_client_has_no_form_on_detail(client, news):
-    """Анониму форма комментария недоступна на странице новости."""
-    url = reverse('news:detail', args=(news.id,))
-    response = client.get(url)
+def test_anonymous_has_no_comment_form(client, news):
+    """Анониму форма комментария на странице новости недоступна."""
+    response = client.get(reverse('news:detail', args=(news.id,)))
     assert response.status_code == HTTPStatus.OK
     assert 'form' not in response.context
 
 
 @pytest.mark.django_db
-def test_authorized_client_has_comment_form(author_client, news):
-    """Авторизованному пользователю доступна форма комментария."""
-    url = reverse('news:detail', args=(news.id,))
-    response = author_client.get(url)
+def test_authorized_has_comment_form(author_client, news):
+    """Авторизованному доступна форма комментария нужного класса."""
+    response = author_client.get(reverse('news:detail', args=(news.id,)))
     assert response.status_code == HTTPStatus.OK
     assert 'form' in response.context
+    assert isinstance(response.context['form'], CommentForm)
