@@ -37,7 +37,8 @@ class NoteForm(forms.ModelForm):
 
         if qs.exists():
             raise ValidationError(
-                f'{slug} - такой slug уже существует, придумайте уникальное значение!'
+                f'{slug} - такой slug уже существует, '
+                'придумайте уникальное значение!'
             )
 
         return slug
