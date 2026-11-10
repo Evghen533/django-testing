@@ -36,6 +36,8 @@ class NoteForm(forms.ModelForm):
             qs = qs.exclude(id=self.instance.pk)
 
         if qs.exists():
-            raise ValidationError(f'{slug}{WARNING}')
+            raise ValidationError(
+                f'{slug} - такой slug уже существует, придумайте уникальное значение!'
+            )
 
         return slug

@@ -78,12 +78,20 @@ class TestNoteCreation(TestCase):
         duplicate_data = self.form_data.copy()
         response = self.client.post(self.add_url, data=duplicate_data)
 
+        if 'form' in response.context and response.context['form'].errors:
+            print("Form errors:", response.context['form'].errors)
+
         self.assertEqual(Note.objects.count(), initial_count)
+
+        expected_error_msg = (
+            f'{self.form_data["slug"]} - такой slug уже существует, '
+            'придумайте уникальное значение!'
+        )
+
         self.assertFormError(
             response.context['form'],
             'slug',
-            f'{self.form_data["slug"]} - такой slug уже существует, '
-            'придумайте уникальное значение!'
+            expected_error_msg
         )
 
     def test_empty_slug_autofilled_with_slugify(self):
