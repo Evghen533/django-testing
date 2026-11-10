@@ -104,7 +104,7 @@ class TestNoteCreation(TestCase):
             'придумайте уникальное значение!'
         )
 
-        self.assertFormError(response, 'form', 'slug', [expected_error_msg])
+        self.assertFormError(form, 'slug', [expected_error_msg])
 
     def test_empty_slug_autofilled_with_slugify(self):
         self.client.force_login(self.user)
