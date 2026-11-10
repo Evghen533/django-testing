@@ -78,8 +78,13 @@ class TestNoteCreation(TestCase):
         duplicate_data = self.form_data.copy()
         response = self.client.post(self.add_url, data=duplicate_data)
 
-        if 'form' in response.context and response.context['form'].errors:
-            print("Form errors:", response.context['form'].errors)
+        assert response.status_code == 200, "Ожидался рендер страницы (200), получен редирект"
+        assert response.context is not None, "Контекст ответа отсутствует"
+        assert 'form' in response.context, "Объект формы отсутствует в контексте"
+
+        form = response.context['form']
+        if form.errors:
+            print("Form errors:", form.errors)
 
         self.assertEqual(Note.objects.count(), initial_count)
 
@@ -88,11 +93,7 @@ class TestNoteCreation(TestCase):
             'придумайте уникальное значение!'
         )
 
-        self.assertFormError(
-            response.context['form'],
-            'slug',
-            expected_error_msg
-        )
+        self.assertFormError(form, 'slug', expected_error_msg)
 
     def test_empty_slug_autofilled_with_slugify(self):
         self.client.force_login(self.user)
