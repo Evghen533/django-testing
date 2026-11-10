@@ -24,51 +24,51 @@ class TestNoteCreation(TestCase):
         cls.add_url = reverse('notes:add')
         cls.success_url = reverse('notes:success')
         cls.login_url = reverse('users:login')
+        cls.existing_note = Note.objects.create(
+            title='Старая заметка',
+            text='Текст старой заметки',
+            slug=cls.form_data['slug'],
+            author=cls.user,
+        )
 
     def test_user_can_create_note(self):
-        """Залогиненный пользователь может создать заметку."""
         self.client.force_login(self.user)
+        initial_count = Note.objects.count()
         response = self.client.post(self.add_url, data=self.form_data)
         self.assertRedirects(response, self.success_url)
-        self.assertEqual(Note.objects.count(), 1)
-        note = Note.objects.get()
+        self.assertEqual(Note.objects.count(), initial_count + 1)
+        note = Note.objects.order_by('-id').first()
         self.assertEqual(note.title, self.form_data['title'])
         self.assertEqual(note.text, self.form_data['text'])
         self.assertEqual(note.slug, self.form_data['slug'])
         self.assertEqual(note.author, self.user)
 
     def test_anonymous_cant_create_note(self):
-        """Аноним не может создать заметку."""
+        initial_count = Note.objects.count()
         response = self.client.post(self.add_url, data=self.form_data)
         expected = f'{self.login_url}?next={self.add_url}'
         self.assertRedirects(response, expected)
-        self.assertEqual(Note.objects.count(), 0)
+        self.assertEqual(Note.objects.count(), initial_count)
 
     def test_slug_must_be_unique(self):
-        """Две заметки с одинаковым slug создать нельзя."""
-        note = Note.objects.create(
-            title='Старая заметка',
-            text='Текст',
-            slug=self.form_data['slug'],
-            author=self.user,
-        )
         self.client.force_login(self.user)
+        initial_count = Note.objects.count()
         response = self.client.post(self.add_url, data=self.form_data)
-        self.assertEqual(Note.objects.count(), 1)
+        self.assertEqual(Note.objects.count(), initial_count)
         self.assertFormError(
             response.context['form'],
             'slug',
-            note.slug + WARNING
+            self.form_data['slug'] + WARNING
         )
 
     def test_empty_slug_autofilled_with_slugify(self):
-        """Без slug он формируется автоматически через pytils.translit."""
         self.client.force_login(self.user)
+        initial_count = Note.objects.count()
         data = {k: v for k, v in self.form_data.items() if k != 'slug'}
         response = self.client.post(self.add_url, data=data)
         self.assertRedirects(response, self.success_url)
-        self.assertEqual(Note.objects.count(), 1)
-        note = Note.objects.get()
+        self.assertEqual(Note.objects.count(), initial_count + 1)
+        note = Note.objects.order_by('-id').first()
         self.assertEqual(note.slug, slugify(data['title']))
 
 
@@ -94,7 +94,6 @@ class TestNoteEditDelete(TestCase):
         }
 
     def test_author_can_edit_note(self):
-        """Автор может редактировать свою заметку."""
         self.client.force_login(self.author)
         response = self.client.post(self.edit_url, data=self.new_data)
         self.assertRedirects(response, self.success_url)
@@ -106,21 +105,28 @@ class TestNoteEditDelete(TestCase):
     def test_other_user_cant_edit_note(self):
         """Чужую заметку редактировать нельзя: 404, текст не меняется."""
         self.client.force_login(self.reader)
+        original_title = self.note.title
         response = self.client.post(self.edit_url, data=self.new_data)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         self.note.refresh_from_db()
-        self.assertEqual(self.note.title, 'Заголовок')
+        self.assertEqual(self.note.title, original_title)
 
     def test_author_can_delete_note(self):
         """Автор может удалить свою заметку."""
+        initial_count = Note.objects.count()
+        initial_id = self.note.id
         self.client.force_login(self.author)
         response = self.client.post(self.delete_url)
         self.assertRedirects(response, self.success_url)
-        self.assertEqual(Note.objects.count(), 0)
+        self.assertEqual(Note.objects.count(), initial_count - 1)
+        self.assertFalse(Note.objects.filter(id=initial_id).exists())
 
     def test_other_user_cant_delete_note(self):
         """Чужую заметку удалить нельзя: 404, заметка на месте."""
+        initial_count = Note.objects.count()
+        initial_id = self.note.id
         self.client.force_login(self.reader)
         response = self.client.post(self.delete_url)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-        self.assertEqual(Note.objects.count(), 1)
+        self.assertEqual(Note.objects.count(), initial_count)
+        self.assertTrue(Note.objects.filter(id=initial_id).exists())

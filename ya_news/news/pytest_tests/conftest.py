@@ -1,27 +1,35 @@
 """Фикстуры для тестов приложения news."""
 
 import pytest
-from django.contrib.auth import get_user_model
 from datetime import date
+
+from django.urls import reverse
+from django.utils import timezone
+from datetime import timedelta
+
+from django.contrib.auth import get_user_model
+
 from news.models import News, Comment
 from news.forms import BAD_WORDS, WARNING
+
+User = get_user_model()
 
 
 @pytest.fixture
 def author():
     """Создаёт пользователя-автора."""
-    user_model = get_user_model()
-    return user_model.objects.create_user(
-        username='Автор', password='password'
+    return User.objects.create_user(
+        username='Автор',
+        password='password'
     )
 
 
 @pytest.fixture
 def reader():
     """Создаёт обычного читателя (не автора)."""
-    user_model = get_user_model()
-    return user_model.objects.create_user(
-        username='Читатель простой', password='pass123456'
+    return User.objects.create_user(
+        username='Читатель простой',
+        password='pass123456'
     )
 
 
@@ -81,6 +89,30 @@ def reader_client(reader, client):
 def bad_words_data():
     """Данные для проверки запрета плохих слов в комментарии."""
     return {
-        'text': f'Какая-то {BAD_WORDS[0]} редакция!',
+        'text': f'Какая-то {BAD_WORDS} редакция!',
         'warning': WARNING,
     }
+
+
+@pytest.fixture
+def news_detail_url(news):
+    """Возвращает URL страницы детали новости."""
+    return reverse('news:detail', args=(news.id,))
+
+
+@pytest.fixture
+def three_comments(news):
+    """Создаёт 3 комментария к новости от одного автора с разной датой создания."""
+    author = User.objects.create(username='Комментатор')
+    now = timezone.now()
+
+    comments = [
+        Comment(
+            news=news,
+            author=author,
+            text=f'Текст {index}',
+            created=now + timedelta(days=index),
+        )
+        for index in range(3)
+    ]
+    return Comment.objects.bulk_create(comments)

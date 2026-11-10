@@ -52,22 +52,13 @@ def test_news_order_on_home_page(client):
 
 
 @pytest.mark.django_db
-def test_comments_order_on_detail_page(client, news):
+def test_comments_order_on_detail_page(client, news_detail_url, three_comments):
     """Комментарии на странице новости идут от старых к новым."""
-    author = User.objects.create(username='Комментатор')
-    now = timezone.now()
-    Comment.objects.bulk_create(
-        Comment(
-            news=news,
-            author=author,
-            text=f'Текст {index}',
-            created=now + timedelta(days=index),
-        )
-        for index in range(3)
-    )
-    response = client.get(reverse('news:detail', args=(news.id,)))
+    response = client.get(news_detail_url)
+
     comments = response.context['news'].comment_set.all()
     all_timestamps = [comment.created for comment in comments]
+
     assert all_timestamps == sorted(all_timestamps)
 
 

@@ -24,6 +24,7 @@ class TestRoutes(TestCase):
         cls.note_args = (cls.note.slug,)
         cls.login_url = reverse('users:login')
         cls.logout_url = reverse('users:logout')
+        cls.signup_url = reverse('users:signup')
         cls.list_url = reverse('notes:list')
         cls.add_url = reverse('notes:add')
         cls.success_url = reverse('notes:success')
@@ -37,7 +38,7 @@ class TestRoutes(TestCase):
 
     def test_auth_pages_available_to_all_users(self):
         """Страницы входа и регистрации доступны анонимам."""
-        for url in (self.login_url, reverse('users:signup')):
+        for url in (self.login_url, self.signup_url):
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
