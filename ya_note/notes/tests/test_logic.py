@@ -72,6 +72,13 @@ class TestNoteCreation(TestCase):
         self.assertEqual(Note.objects.count(), initial_count)
 
     def test_slug_must_be_unique(self):
+        Note.objects.create(
+            title='Существующая заметка',
+            text='Текст.',
+            slug=self.form_data['slug'],
+            author=self.user,
+        )
+
         self.client.force_login(self.user)
         initial_count = Note.objects.count()
 
@@ -79,9 +86,9 @@ class TestNoteCreation(TestCase):
         response = self.client.post(self.add_url, data=duplicate_data)
 
         assert response.status_code == 200, (
-            "Ожидался рендер страницы (200), получен редирект"
+            "Ожидался рендер страницы с ошибкой формы (200), "
+            "получен редирект"
         )
-        assert response.context is not None, "Контекст ответа отсутствует"
         assert 'form' in response.context, (
             "Объект формы отсутствует в контексте"
         )
@@ -97,7 +104,7 @@ class TestNoteCreation(TestCase):
             'придумайте уникальное значение!'
         )
 
-        self.assertFormError(form, 'slug', expected_error_msg)
+        self.assertFormError(response, 'form', 'slug', [expected_error_msg])
 
     def test_empty_slug_autofilled_with_slugify(self):
         self.client.force_login(self.user)
