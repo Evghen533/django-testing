@@ -15,6 +15,10 @@ class NoteForm(forms.ModelForm):
         model = Note
         fields = ('title', 'text', 'slug')
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['slug'].required = False
+
     def clean_slug(self):
         cleaned_data = super().clean()
         slug = cleaned_data.get('slug')

@@ -1,3 +1,4 @@
+import uuid
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
@@ -5,7 +6,6 @@ from django.test import TestCase
 from django.urls import reverse
 from pytils.translit import slugify
 
-from notes.forms import WARNING
 from notes.models import Note
 
 User = get_user_model()
@@ -15,28 +15,43 @@ class TestNoteCreation(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create(username='Автор')
-        cls.form_data = {
-            'title': 'Новая заметка',
-            'text': 'Текст заметки',
-            'slug': 'novaya-zametka',
+        cls.user = User.objects.create_user(username='Автор', password='password')
+
+    def setUp(self):
+        suffix = str(uuid.uuid4())[:8]
+        self.title = f'Новая заметка {suffix}'
+        self.text = 'Текст заметки'
+        self.slug = f'novaya-zametka-{suffix}'
+
+        self.form_data = {
+            'title': self.title,
+            'text': self.text,
+            'slug': self.slug,
         }
-        cls.add_url = reverse('notes:add')
-        cls.success_url = reverse('notes:success')
-        cls.login_url = reverse('users:login')
-        cls.existing_note = Note.objects.create(
-            title='Старая заметка',
-            text='Текст старой заметки',
-            slug=cls.form_data['slug'],
-            author=cls.user,
+
+        self.add_url = reverse('notes:add')
+        self.success_url = reverse('notes:success')
+        self.login_url = reverse('users:login')
+
+        other_user = User.objects.create_user(username=f'Другой-{suffix}', password='password')
+        Note.objects.create(
+            title=f'Чужая заметка {suffix}',
+            text='Текст чужой заметки',
+            slug=f'chuzhaya-{suffix}',
+            author=other_user,
         )
 
     def test_user_can_create_note(self):
         self.client.force_login(self.user)
         initial_count = Note.objects.count()
         response = self.client.post(self.add_url, data=self.form_data)
+
+        if response.status_code != 302 and 'form' in response.context:
+            print("Form errors:", response.context['form'].errors)
+
         self.assertRedirects(response, self.success_url)
         self.assertEqual(Note.objects.count(), initial_count + 1)
+
         note = Note.objects.order_by('-id').first()
         self.assertEqual(note.title, self.form_data['title'])
         self.assertEqual(note.text, self.form_data['text'])
@@ -53,12 +68,15 @@ class TestNoteCreation(TestCase):
     def test_slug_must_be_unique(self):
         self.client.force_login(self.user)
         initial_count = Note.objects.count()
-        response = self.client.post(self.add_url, data=self.form_data)
+
+        duplicate_data = self.form_data.copy()
+        response = self.client.post(self.add_url, data=duplicate_data)
+
         self.assertEqual(Note.objects.count(), initial_count)
         self.assertFormError(
             response.context['form'],
             'slug',
-            self.form_data['slug'] + WARNING
+            f'{self.form_data["slug"]} - такой slug уже существует, придумайте уникальное значение!'
         )
 
     def test_empty_slug_autofilled_with_slugify(self):
@@ -66,31 +84,40 @@ class TestNoteCreation(TestCase):
         initial_count = Note.objects.count()
         data = {k: v for k, v in self.form_data.items() if k != 'slug'}
         response = self.client.post(self.add_url, data=data)
+
+        if response.status_code != 302 and 'form' in response.context:
+            print("Form errors:", response.context['form'].errors)
+
         self.assertRedirects(response, self.success_url)
         self.assertEqual(Note.objects.count(), initial_count + 1)
+
         note = Note.objects.order_by('-id').first()
-        self.assertEqual(note.slug, slugify(data['title']))
+        expected_slug = slugify(data['title'])[:100]
+        self.assertEqual(note.slug, expected_slug)
 
 
 class TestNoteEditDelete(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.author = User.objects.create(username='Автор')
-        cls.reader = User.objects.create(username='Читатель')
-        cls.note = Note.objects.create(
-            title='Заголовок',
+        cls.author = User.objects.create_user(username='Автор', password='password')
+        cls.reader = User.objects.create_user(username='Читатель', password='password')
+
+    def setUp(self):
+        suffix = str(uuid.uuid4())[:8]
+        self.note = Note.objects.create(
+            title=f'Заголовок {suffix}',
             text='Текст.',
-            slug='zagolovok',
-            author=cls.author,
+            slug=f'zagolovok-{suffix}',
+            author=self.author,
         )
-        cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
-        cls.delete_url = reverse('notes:delete', args=(cls.note.slug,))
-        cls.success_url = reverse('notes:success')
-        cls.new_data = {
+        self.edit_url = reverse('notes:edit', args=(self.note.slug,))
+        self.delete_url = reverse('notes:delete', args=(self.note.slug,))
+        self.success_url = reverse('notes:success')
+        self.new_data = {
             'title': 'Новый заголовок',
             'text': 'Новый текст.',
-            'slug': 'novyi-zagolovok',
+            'slug': f'novyi-zagolovok-{suffix}',
         }
 
     def test_author_can_edit_note(self):
