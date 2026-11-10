@@ -37,7 +37,11 @@ def test_authorized_user_can_create_comment(author_client, news, form_data):
 
 
 @pytest.mark.django_db
-def test_comment_with_bad_words_not_published(author_client, news, bad_words_data):
+def test_comment_with_bad_words_not_published(
+    author_client,
+    news,
+    bad_words_data
+):
     """Комментарий со стоп-словами не публикуется, форма возвращает ошибку."""
     url = reverse('news:detail', args=(news.id,))
     initial_count = Comment.objects.count()

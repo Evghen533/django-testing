@@ -102,7 +102,7 @@ def news_detail_url(news):
 
 @pytest.fixture
 def three_comments(news):
-    """Создаёт 3 комментария к новости от одного автора с разной датой создания."""
+    """Создаёт 3 комментария от одного автора с разной датой создания."""
     author = User.objects.create(username='Комментатор')
     now = timezone.now()
 

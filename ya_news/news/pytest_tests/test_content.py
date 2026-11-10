@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from news.forms import CommentForm
-from news.models import Comment, News
+from news.models import News
 
 HOME_URL = reverse('news:home')
 
@@ -52,7 +52,11 @@ def test_news_order_on_home_page(client):
 
 
 @pytest.mark.django_db
-def test_comments_order_on_detail_page(client, news_detail_url, three_comments):
+def test_comments_order_on_detail_page(
+    client,
+    news_detail_url,
+    three_comments
+):
     """Комментарии на странице новости идут от старых к новым."""
     response = client.get(news_detail_url)
 
