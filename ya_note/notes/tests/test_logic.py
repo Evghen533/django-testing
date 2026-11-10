@@ -15,7 +15,10 @@ class TestNoteCreation(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username='Автор', password='password')
+        cls.user = User.objects.create_user(
+            username='Автор',
+            password='password'
+        )
 
     def setUp(self):
         suffix = str(uuid.uuid4())[:8]
@@ -33,7 +36,10 @@ class TestNoteCreation(TestCase):
         self.success_url = reverse('notes:success')
         self.login_url = reverse('users:login')
 
-        other_user = User.objects.create_user(username=f'Другой-{suffix}', password='password')
+        other_user = User.objects.create_user(
+            username=f'Другой-{suffix}',
+            password='password'
+        )
         Note.objects.create(
             title=f'Чужая заметка {suffix}',
             text='Текст чужой заметки',
@@ -76,7 +82,8 @@ class TestNoteCreation(TestCase):
         self.assertFormError(
             response.context['form'],
             'slug',
-            f'{self.form_data["slug"]} - такой slug уже существует, придумайте уникальное значение!'
+            f'{self.form_data["slug"]} - такой slug уже существует, '
+            'придумайте уникальное значение!'
         )
 
     def test_empty_slug_autofilled_with_slugify(self):
@@ -100,8 +107,14 @@ class TestNoteEditDelete(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.author = User.objects.create_user(username='Автор', password='password')
-        cls.reader = User.objects.create_user(username='Читатель', password='password')
+        cls.author = User.objects.create_user(
+            username='Автор',
+            password='password'
+        )
+        cls.reader = User.objects.create_user(
+            username='Читатель',
+            password='password'
+        )
 
     def setUp(self):
         suffix = str(uuid.uuid4())[:8]
