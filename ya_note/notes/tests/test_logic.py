@@ -78,9 +78,13 @@ class TestNoteCreation(TestCase):
         duplicate_data = self.form_data.copy()
         response = self.client.post(self.add_url, data=duplicate_data)
 
-        assert response.status_code == 200, "Ожидался рендер страницы (200), получен редирект"
+        assert response.status_code == 200, (
+            "Ожидался рендер страницы (200), получен редирект"
+        )
         assert response.context is not None, "Контекст ответа отсутствует"
-        assert 'form' in response.context, "Объект формы отсутствует в контексте"
+        assert 'form' in response.context, (
+            "Объект формы отсутствует в контексте"
+        )
 
         form = response.context['form']
         if form.errors:
