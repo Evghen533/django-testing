@@ -69,31 +69,31 @@ class TestNoteCreation(TestCase):
         self.assertEqual(Note.objects.count(), initial_count)
 
 
-def test_slug_must_be_unique(self):
-    """Нельзя создать вторую заметку с существующим slug."""
-    Note.objects.create(
-        title='Существующая заметка',
-        text='Текст.',
-        slug=self.form_data['slug'],
-        author=self.user,
-    )
+    def test_slug_must_be_unique(self):
+        """Нельзя создать вторую заметку с существующим slug."""
+        Note.objects.create(
+            title='Существующая заметка',
+            text='Текст.',
+            slug=self.form_data['slug'],
+            author=self.user,
+        )
 
-    self.client.force_login(self.user)
-    initial_count = Note.objects.count()
+        self.client.force_login(self.user)
+        initial_count = Note.objects.count()
 
-    response = self.client.post(self.add_url, data=self.form_data)
+        response = self.client.post(self.add_url, data=self.form_data)
 
-    self.assertEqual(Note.objects.count(), initial_count)
+        self.assertEqual(Note.objects.count(), initial_count)
 
-    expected_error_msg = (
-        f'{self.form_data["slug"]} - такой slug уже существует, '
-        'придумайте уникальное значение!'
-    )
-    self.assertFormError(
-        response.context['form'],
-        'slug',
-        [expected_error_msg]
-    )
+        expected_error_msg = (
+            f'{self.form_data["slug"]} - такой slug уже существует, '
+            'придумайте уникальное значение!'
+        )
+        self.assertFormError(
+            response.context['form'],
+            'slug',
+            [expected_error_msg]
+        )
 
     def test_empty_slug_autofilled_with_slugify(self):
         self.client.force_login(self.user)
