@@ -21,24 +21,17 @@ def test_anonymous_cannot_create_comment(client, news, form_data):
 
 @pytest.mark.django_db
 def test_authorized_user_can_create_comment(
-    author_client,
-    news,
-    detail_url,
-    form_data
+    author_client, news, detail_url, form_data
 ):
     """Авторизованный пользователь может отправить комментарий."""
     initial_count = Comment.objects.count()
-    initial_pk = Comment.objects.order_by
-    ('pk').last().pk if initial_count else 0
 
     response = author_client.post(detail_url, data=form_data)
 
     assert response.status_code == HTTPStatus.FOUND
     assert Comment.objects.count() == initial_count + 1
 
-    # Берём последнюю созданную запись, а не произвольную по фильтру
     comment = Comment.objects.order_by('pk').last()
-    assert comment.pk > initial_pk
     assert comment.text == form_data['text']
     assert comment.news == news
     assert comment.author == author_client.user
