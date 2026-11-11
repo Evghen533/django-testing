@@ -1,12 +1,11 @@
 """Фикстуры для тестов приложения news."""
 
 import pytest
-from datetime import date
+
+from datetime import date, timedelta
 
 from django.urls import reverse
 from django.utils import timezone
-from datetime import timedelta
-
 from django.contrib.auth import get_user_model
 
 from news.models import News, Comment
@@ -116,3 +115,38 @@ def three_comments(news):
         for index in range(3)
     ]
     return Comment.objects.bulk_create(comments)
+
+
+@pytest.fixture
+def home_url():
+    return reverse('news:home')
+
+
+@pytest.fixture
+def detail_url(news):
+    return reverse('news:detail', args=(news.id,))
+
+
+@pytest.fixture
+def login_url():
+    return reverse('users:login')
+
+
+@pytest.fixture
+def signup_url():
+    return reverse('users:signup')
+
+
+@pytest.fixture
+def logout_url():
+    return reverse('users:logout')
+
+
+@pytest.fixture
+def edit_url(comment):
+    return reverse('news:edit', args=(comment.pk,))
+
+
+@pytest.fixture
+def delete_url(comment):
+    return reverse('news:delete', args=(comment.pk,))

@@ -19,14 +19,16 @@ User = get_user_model()
 def test_news_count_on_home_page(client):
     """На главной странице не более NEWS_COUNT_ON_HOME_PAGE новостей."""
     today = timezone.now()
-    News.objects.bulk_create(
+    news = [
         News(
             title=f'Новость {index}',
             text='Просто текст.',
             date=today - timedelta(days=index),
         )
         for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
-    )
+    ]
+    News.objects.bulk_create(news)
+
     response = client.get(HOME_URL)
     assert response.status_code == HTTPStatus.OK
     object_list = response.context['object_list']
@@ -69,7 +71,7 @@ def test_comments_order_on_detail_page(
 @pytest.mark.django_db
 def test_anonymous_has_no_comment_form(client, news):
     """Анониму форма комментария на странице новости недоступна."""
-    response = client.get(reverse('news:detail', args=(news.id,)))
+    response = client.get(detail_url)
     assert response.status_code == HTTPStatus.OK
     assert 'form' not in response.context
 
@@ -77,7 +79,7 @@ def test_anonymous_has_no_comment_form(client, news):
 @pytest.mark.django_db
 def test_authorized_has_comment_form(author_client, news):
     """Авторизованному доступна форма комментария нужного класса."""
-    response = author_client.get(reverse('news:detail', args=(news.id,)))
+    response = author_client.get(detail_url)
     assert response.status_code == HTTPStatus.OK
     assert 'form' in response.context
     assert isinstance(response.context['form'], CommentForm)

@@ -1,66 +1,63 @@
 from http import HTTPStatus
 
 import pytest
-from django.urls import reverse
-
-LOGIN_URL = reverse('users:login')
-SIGNUP_URL = reverse('users:signup')
-LOGOUT_URL = reverse('users:logout')
 
 
 @pytest.mark.django_db
-def test_home_page_available_to_anonymous(client):
-    response = client.get(reverse('news:home'))
+def test_home_page_available_to_anonymous(client, home_url):
+    response = client.get(home_url)
     assert response.status_code == HTTPStatus.OK
 
 
 @pytest.mark.django_db
-def test_detail_page_available_to_anonymous(client, news):
-    response = client.get(reverse('news:detail', args=(news.id,)))
+def test_detail_page_available_to_anonymous(client, detail_url):
+    response = client.get(detail_url)
     assert response.status_code == HTTPStatus.OK
 
 
 @pytest.mark.django_db
-def test_auth_pages_available_to_anonymous(client):
+def test_auth_pages_available_to_anonymous(client, signup_url, login_url):
     """Страницы регистрации и входа доступны анонимам."""
-    for url in (SIGNUP_URL, LOGIN_URL):
+    for url in (signup_url, login_url):
         response = client.get(url)
         assert response.status_code == HTTPStatus.OK
 
 
 @pytest.mark.django_db
-def test_logout_available_to_anonymous(client):
+def test_logout_available_to_anonymous(client, logout_url):
     """Страница выхода доступна анонимам."""
-    response = client.post(LOGOUT_URL)
+    response = client.post(logout_url)
     assert response.status_code == HTTPStatus.OK
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('name', ['news:edit', 'news:delete'])
-def test_comment_pages_available_to_author(client, comment, name):
+@pytest.mark.parametrize('url_fixture_name', ['edit_url', 'delete_url'])
+def test_comment_pages_available_to_author(client, comment, url_fixture_name, request):
     """Страницы правки и удаления доступны автору комментария."""
+    url = request.getfixturevalue(url_fixture_name)
     client.force_login(comment.author)
-    response = client.get(reverse(name, args=(comment.id,)))
+    response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('name', ['news:edit', 'news:delete'])
+@pytest.mark.parametrize('url_fixture_name', ['edit_url', 'delete_url'])
 def test_comment_pages_not_available_to_other_user(
-    client, comment, reader, name
+    client, comment, reader, url_fixture_name, request
 ):
-    """Чужому пользователю правка и удаления дают 404."""
+    """Чужому пользователю правка и удаление дают 404."""
+    url = request.getfixturevalue(url_fixture_name)
     client.force_login(reader)
-    response = client.get(reverse(name, args=(comment.id,)))
+    response = client.get(url)
     assert response.status_code == HTTPStatus.NOT_FOUND
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('name', ['news:edit', 'news:delete'])
-def test_anonymous_redirects_to_login(client, comment, name):
+@pytest.mark.parametrize('url_fixture_name', ['edit_url', 'delete_url'])
+def test_anonymous_redirects_to_login(client, comment, login_url, url_fixture_name, request):
     """Аноним с защищённых страниц уходит на логин."""
-    url = reverse(name, args=(comment.id,))
-    expected = f'{LOGIN_URL}?next={url}'
+    url = request.getfixturevalue(url_fixture_name)
+    expected = f'{login_url}?next={url}'
     response = client.get(url)
     assert response.status_code == HTTPStatus.FOUND
     assert response.url == expected

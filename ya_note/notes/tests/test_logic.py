@@ -52,9 +52,6 @@ class TestNoteCreation(TestCase):
         initial_count = Note.objects.count()
         response = self.client.post(self.add_url, data=self.form_data)
 
-        if response.status_code != 302 and 'form' in response.context:
-            print("Form errors:", response.context['form'].errors)
-
         self.assertRedirects(response, self.success_url)
         self.assertEqual(Note.objects.count(), initial_count + 1)
 
@@ -71,49 +68,37 @@ class TestNoteCreation(TestCase):
         self.assertRedirects(response, expected)
         self.assertEqual(Note.objects.count(), initial_count)
 
-    def test_slug_must_be_unique(self):
-        Note.objects.create(
-            title='Существующая заметка',
-            text='Текст.',
-            slug=self.form_data['slug'],
-            author=self.user,
-        )
+def test_slug_must_be_unique(self):
+    """Нельзя создать вторую заметку с существующим slug."""
+    Note.objects.create(
+        title='Существующая заметка',
+        text='Текст.',
+        slug=self.form_data['slug'],
+        author=self.user,
+    )
 
-        self.client.force_login(self.user)
-        initial_count = Note.objects.count()
+    self.client.force_login(self.user)
+    initial_count = Note.objects.count()
 
-        duplicate_data = self.form_data.copy()
-        response = self.client.post(self.add_url, data=duplicate_data)
+    response = self.client.post(self.add_url, data=self.form_data)
 
-        assert response.status_code == 200, (
-            "Ожидался рендер страницы с ошибкой формы (200), "
-            "получен редирект"
-        )
-        assert 'form' in response.context, (
-            "Объект формы отсутствует в контексте"
-        )
+    self.assertEqual(Note.objects.count(), initial_count)
 
-        form = response.context['form']
-        if form.errors:
-            print("Form errors:", form.errors)
-
-        self.assertEqual(Note.objects.count(), initial_count)
-
-        expected_error_msg = (
-            f'{self.form_data["slug"]} - такой slug уже существует, '
-            'придумайте уникальное значение!'
-        )
-
-        self.assertFormError(form, 'slug', [expected_error_msg])
+    expected_error_msg = (
+        f'{self.form_data["slug"]} - такой slug уже существует, '
+        'придумайте уникальное значение!'
+    )
+    self.assertFormError(
+        response.context['form'],
+        'slug',
+        [expected_error_msg]
+    )
 
     def test_empty_slug_autofilled_with_slugify(self):
         self.client.force_login(self.user)
         initial_count = Note.objects.count()
         data = {k: v for k, v in self.form_data.items() if k != 'slug'}
         response = self.client.post(self.add_url, data=data)
-
-        if response.status_code != 302 and 'form' in response.context:
-            print("Form errors:", response.context['form'].errors)
 
         self.assertRedirects(response, self.success_url)
         self.assertEqual(Note.objects.count(), initial_count + 1)
