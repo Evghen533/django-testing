@@ -68,7 +68,6 @@ class TestNoteCreation(TestCase):
         self.assertRedirects(response, expected)
         self.assertEqual(Note.objects.count(), initial_count)
 
-
     def test_slug_must_be_unique(self):
         """Нельзя создать вторую заметку с существующим slug."""
         Note.objects.create(
