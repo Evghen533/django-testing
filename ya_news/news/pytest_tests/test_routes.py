@@ -32,7 +32,12 @@ def test_logout_available_to_anonymous(client, logout_url):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize('url_fixture_name', ['edit_url', 'delete_url'])
-def test_comment_pages_available_to_author(client, comment, url_fixture_name, request):
+def test_comment_pages_available_to_author(
+    client,
+    comment,
+    url_fixture_name,
+    request
+):
     """Страницы правки и удаления доступны автору комментария."""
     url = request.getfixturevalue(url_fixture_name)
     client.force_login(comment.author)
@@ -54,7 +59,13 @@ def test_comment_pages_not_available_to_other_user(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize('url_fixture_name', ['edit_url', 'delete_url'])
-def test_anonymous_redirects_to_login(client, comment, login_url, url_fixture_name, request):
+def test_anonymous_redirects_to_login(
+    client,
+    comment,
+    login_url,
+    url_fixture_name,
+    request
+):
     """Аноним с защищённых страниц уходит на логин."""
     url = request.getfixturevalue(url_fixture_name)
     expected = f'{login_url}?next={url}'

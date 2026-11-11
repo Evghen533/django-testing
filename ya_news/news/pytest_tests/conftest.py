@@ -124,6 +124,7 @@ def home_url():
 
 @pytest.fixture
 def detail_url(news):
+    """URL страницы новости."""
     return reverse('news:detail', args=(news.id,))
 
 

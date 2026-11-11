@@ -69,7 +69,7 @@ def test_comments_order_on_detail_page(
 
 
 @pytest.mark.django_db
-def test_anonymous_has_no_comment_form(client, news):
+def test_anonymous_has_no_comment_form(client, news, detail_url):
     """Анониму форма комментария на странице новости недоступна."""
     response = client.get(detail_url)
     assert response.status_code == HTTPStatus.OK
@@ -77,7 +77,7 @@ def test_anonymous_has_no_comment_form(client, news):
 
 
 @pytest.mark.django_db
-def test_authorized_has_comment_form(author_client, news):
+def test_authorized_has_comment_form(author_client, news, detail_url):
     """Авторизованному доступна форма комментария нужного класса."""
     response = author_client.get(detail_url)
     assert response.status_code == HTTPStatus.OK
