@@ -100,7 +100,7 @@ class TestCommentEditDelete(TestCase):
 
         assert response.status_code in (
             HTTPStatus.NOT_FOUND,
-            HTTPStatus.FORBIDDEN
+            HTTPStatus.FORBIDDEN,
         )
         assert Comment.objects.count() == 1
 
@@ -125,7 +125,7 @@ class TestCommentEditDelete(TestCase):
 
         assert response.status_code in (
             HTTPStatus.NOT_FOUND,
-            HTTPStatus.FORBIDDEN
+            HTTPStatus.FORBIDDEN,
         )
 
         comment.refresh_from_db()
