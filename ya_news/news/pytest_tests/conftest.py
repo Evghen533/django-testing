@@ -138,3 +138,11 @@ def three_comments(news):
         for index in range(3)
     ]
     return Comment.objects.bulk_create(comments)
+
+
+@pytest.fixture
+def news_list(db):
+    return [
+        News.objects.create(title=f'News {i}', text=f'Text {i}', pub_date=f'2023-01-{i:02d}')
+        for i in range(5)
+    ]

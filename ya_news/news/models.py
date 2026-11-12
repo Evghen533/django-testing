@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from django.urls import reverse
+
 from django.conf import settings
 from django.db import models
 
@@ -35,3 +37,9 @@ class Comment(models.Model):
 
     def __str__(self):
         return self.text[:50]
+
+    def get_edit_url(self):
+        return reverse('news:edit', args=[self.id])
+
+    def get_delete_url(self):
+        return reverse('news:delete', args=[self.id])

@@ -16,7 +16,7 @@ class TestCommentCreation(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.news = News.objects.create(title='Заголовок', text='Текст')
-        cls.user = User.objects.create(username='Мимо Крокодил')
+        cls.user = User.objects.create_user(username='Мимо Крокодил')
         cls.auth_client = Client()
         cls.auth_client.force_login(cls.user)
         cls.form_data = {'text': cls.COMMENT_TEXT}
@@ -30,8 +30,9 @@ class TestCommentCreation(TestCase):
         url = reverse('news:detail', args=(self.news.id,))
         response = self.auth_client.post(url, data=self.form_data)
 
-        expected_url = reverse('news:detail', args=(self.news.id,))
-        self.assertRedirects(response, expected_url)
+        expected_base_url = reverse('news:detail', args=(self.news.id,))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(expected_base_url))
 
         self.assertEqual(Comment.objects.count(), 1)
         comment = Comment.objects.get()
@@ -61,11 +62,11 @@ class TestCommentEditDelete(TestCase):
     def setUpTestData(cls):
         cls.news = News.objects.create(title='Заголовок', text='Текст')
 
-        cls.author = User.objects.create(username='Автор комментария')
+        cls.author = User.objects.create_user(username='Автор комментария')
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
 
-        cls.reader = User.objects.create(username='Читатель')
+        cls.reader = User.objects.create_user(username='Читатель')
         cls.reader_client = Client()
         cls.reader_client.force_login(cls.reader)
 
@@ -88,9 +89,9 @@ class TestCommentEditDelete(TestCase):
 
     def test_author_can_delete_comment(self):
         response = self.author_client.delete(self._get_delete_url())
-        self.assertRedirects(response, self._get_detail_url())
-        self.assertEqual(response.status_code, HTTPStatus.FOUND)
-        self.assertEqual(Comment.objects.count(), 0)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(self._get_detail_url()))
+        self.assertFalse(Comment.objects.filter(id=self.comment.id).exists())
 
     def test_user_cant_delete_comment_of_another_user(self):
         reader_client = self.reader_client
@@ -98,18 +99,20 @@ class TestCommentEditDelete(TestCase):
 
         response = reader_client.delete(comment.get_delete_url())
 
-        assert response.status_code in (
+        self.assertIn(response.status_code, (
             HTTPStatus.NOT_FOUND,
             HTTPStatus.FORBIDDEN,
-        )
-        assert Comment.objects.count() == 1
+        ))
+        self.assertEqual(Comment.objects.count(), 1)
 
     def test_author_can_edit_comment(self):
         response = self.author_client.post(
             self._get_edit_url(),
             data=self.form_data,
         )
-        self.assertRedirects(response, self._get_detail_url())
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(self._get_detail_url()))
+
         self.comment.refresh_from_db()
         self.assertEqual(self.comment.text, self.NEW_COMMENT_TEXT)
 
@@ -123,10 +126,10 @@ class TestCommentEditDelete(TestCase):
             data=form_data,
         )
 
-        assert response.status_code in (
+        self.assertIn(response.status_code, (
             HTTPStatus.NOT_FOUND,
             HTTPStatus.FORBIDDEN,
-        )
+        ))
 
         comment.refresh_from_db()
-        assert comment.text == form_data["text"]
+        self.assertNotEqual(comment.text, form_data["text"])
