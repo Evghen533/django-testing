@@ -143,6 +143,10 @@ def three_comments(news):
 @pytest.fixture
 def news_list(db):
     return [
-        News.objects.create(title=f'News {i}', text=f'Text {i}', pub_date=f'2023-01-{i:02d}')
+        News.objects.create(
+            title=f'News {i}',
+            text=f'Text {i}',
+            pub_date=f'2023-01-{i:02d}',
+        )
         for i in range(5)
     ]
