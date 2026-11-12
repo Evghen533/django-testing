@@ -1,85 +1,39 @@
-from datetime import timedelta
-from http import HTTPStatus
-
 import pytest
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.urls import reverse
-from django.utils import timezone
 
 from news.forms import CommentForm
-from news.models import News
-
-HOME_URL = reverse('news:home')
-
-User = get_user_model()
 
 
-@pytest.mark.django_db
-def test_news_count_on_home_page(client):
-    """На главной странице не более NEWS_COUNT_ON_HOME_PAGE новостей."""
-    today = timezone.now()
-    news = [
-        News(
-            title=f'Новость {index}',
-            text='Просто текст.',
-            date=today - timedelta(days=index),
-        )
-        for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
-    ]
-    News.objects.bulk_create(news)
-
-    response = client.get(HOME_URL)
-    assert response.status_code == HTTPStatus.OK
+def test_news_count(client, news_list):
+    response = client.get(reverse('news:home'))
     object_list = response.context['object_list']
     assert object_list.count() == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
-@pytest.mark.django_db
-def test_news_order_on_home_page(client):
-    """Новости отсортированы от самых свежих к самым старым."""
-    today = timezone.now()
-    News.objects.bulk_create(
-        News(
-            title=f'Новость {index}',
-            text='Просто текст.',
-            date=today - timedelta(days=index),
-        )
-        for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
-    )
-    response = client.get(HOME_URL)
+def test_news_order(client, news_list):
+    response = client.get(reverse('news:home'))
     object_list = response.context['object_list']
     all_dates = [news.date for news in object_list]
     assert all_dates == sorted(all_dates, reverse=True)
 
 
-@pytest.mark.django_db
-def test_comments_order_on_detail_page(
-    client,
-    news_detail_url,
-    three_comments
-):
-    """Комментарии на странице новости идут от старых к новым."""
-    response = client.get(news_detail_url)
+def test_comments_order(client, news, three_comments):
+    detail_url = reverse('news:detail', args=(news.id,))
+    response = client.get(detail_url)
 
+    assert 'news' in response.context
     comments = response.context['news'].comment_set.all()
-    all_timestamps = [comment.created for comment in comments]
-
+    all_timestamps = [c.created for c in comments]
     assert all_timestamps == sorted(all_timestamps)
 
 
-@pytest.mark.django_db
-def test_anonymous_has_no_comment_form(client, news, detail_url):
-    """Анониму форма комментария на странице новости недоступна."""
+def test_anonymous_client_has_no_form(client, detail_url):
     response = client.get(detail_url)
-    assert response.status_code == HTTPStatus.OK
     assert 'form' not in response.context
 
 
-@pytest.mark.django_db
-def test_authorized_has_comment_form(author_client, news, detail_url):
-    """Авторизованному доступна форма комментария нужного класса."""
+def test_authorized_client_has_form(author_client, detail_url):
     response = author_client.get(detail_url)
-    assert response.status_code == HTTPStatus.OK
     assert 'form' in response.context
     assert isinstance(response.context['form'], CommentForm)

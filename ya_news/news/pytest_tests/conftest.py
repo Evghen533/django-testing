@@ -1,35 +1,29 @@
 """Фикстуры для тестов приложения news."""
 
-import pytest
-
 from datetime import date, timedelta
 
+import pytest
+
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
-from django.contrib.auth import get_user_model
 
-from news.models import News, Comment
 from news.forms import BAD_WORDS, WARNING
+from news.models import News, Comment
 
 User = get_user_model()
 
 
 @pytest.fixture
 def author():
-    """Создаёт пользователя-автора."""
-    return User.objects.create_user(
-        username='Автор',
-        password='password'
-    )
+    """Создаёт пользователя-автора (пароль не нужен)."""
+    return User.objects.create_user(username='Автор')
 
 
 @pytest.fixture
 def reader():
     """Создаёт обычного читателя (не автора)."""
-    return User.objects.create_user(
-        username='Читатель простой',
-        password='pass123456'
-    )
+    return User.objects.create_user(username='Читатель простой')
 
 
 @pytest.fixture
@@ -86,46 +80,21 @@ def reader_client(reader, client):
 
 @pytest.fixture
 def bad_words_data():
-    """Данные для проверки запрета плохих слов в комментарии."""
+    """Данные для проверки запрета плохих слов в комментарии (только text)."""
     return {
         'text': f'Какая-то {BAD_WORDS} редакция!',
-        'warning': WARNING,
     }
 
 
 @pytest.fixture
-def news_detail_url(news):
-    """Возвращает URL страницы детали новости."""
+def detail_url(news):
+    """URL страницы детали новости."""
     return reverse('news:detail', args=(news.id,))
-
-
-@pytest.fixture
-def three_comments(news):
-    """Создаёт 3 комментария от одного автора с разной датой создания."""
-    author = User.objects.create(username='Комментатор')
-    now = timezone.now()
-
-    comments = [
-        Comment(
-            news=news,
-            author=author,
-            text=f'Текст {index}',
-            created=now + timedelta(days=index),
-        )
-        for index in range(3)
-    ]
-    return Comment.objects.bulk_create(comments)
 
 
 @pytest.fixture
 def home_url():
     return reverse('news:home')
-
-
-@pytest.fixture
-def detail_url(news):
-    """URL страницы новости."""
-    return reverse('news:detail', args=(news.id,))
 
 
 @pytest.fixture
@@ -151,3 +120,21 @@ def edit_url(comment):
 @pytest.fixture
 def delete_url(comment):
     return reverse('news:delete', args=(comment.pk,))
+
+
+@pytest.fixture
+def three_comments(news):
+    """Создаёт 3 комментария от одного автора с разной датой создания."""
+    author = User.objects.create_user(username='Комментатор')
+    now = timezone.now()
+
+    comments = [
+        Comment(
+            news=news,
+            author=author,
+            text=f'Текст {index}',
+            created=now + timedelta(days=index),
+        )
+        for index in range(3)
+    ]
+    return Comment.objects.bulk_create(comments)
