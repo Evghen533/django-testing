@@ -92,10 +92,13 @@ class TestCommentEditDelete(TestCase):
         self.assertEqual(response.status_code, HTTPStatus.FOUND)
         self.assertEqual(Comment.objects.count(), 0)
 
-    def test_user_cant_delete_comment_of_another_user(reader_client, comment):
+    def test_user_cant_delete_comment_of_another_user(self, reader_client, comment):
         response = reader_client.delete(comment.get_delete_url())
 
-        assert response.status_code in (HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN)
+        assert response.status_code in (
+            HTTPStatus.NOT_FOUND,
+            HTTPStatus.FORBIDDEN
+        )
         assert Comment.objects.count() == 1
 
     def test_author_can_edit_comment(self):
@@ -107,13 +110,21 @@ class TestCommentEditDelete(TestCase):
         self.comment.refresh_from_db()
         self.assertEqual(self.comment.text, self.NEW_COMMENT_TEXT)
 
-    def test_user_cant_edit_comment_of_another_user(reader_client, comment, form_data):
+    def test_user_cant_edit_comment_of_another_user(
+            self,
+            reader_client,
+            comment,
+            form_data
+        ):
         response = reader_client.post(
             comment.get_edit_url(),
             data=form_data,
         )
 
-        assert response.status_code in (HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN)
+        assert response.status_code in (
+            HTTPStatus.NOT_FOUND,
+            HTTPStatus.FORBIDDEN
+        )
 
         comment.refresh_from_db()
         assert comment.text == form_data["text"]
