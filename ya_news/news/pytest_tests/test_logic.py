@@ -72,7 +72,7 @@ class TestCommentEditDelete(TestCase):
         cls.comment = Comment.objects.create(
             news=cls.news,
             author=cls.author,
-            text=cls.COMMENT_TEXT
+            text=cls.COMMENT_TEXT,
         )
 
         cls.form_data = {'text': cls.NEW_COMMENT_TEXT}
@@ -92,10 +92,10 @@ class TestCommentEditDelete(TestCase):
         self.assertEqual(response.status_code, HTTPStatus.FOUND)
         self.assertEqual(Comment.objects.count(), 0)
 
-    def test_user_cant_delete_comment_of_another_user(
-        reader_client,
-        comment,
-    ):
+    def test_user_cant_delete_comment_of_another_user(self):
+        reader_client = self.reader_client
+        comment = self.comment
+
         response = reader_client.delete(comment.get_delete_url())
 
         assert response.status_code in (
@@ -107,17 +107,17 @@ class TestCommentEditDelete(TestCase):
     def test_author_can_edit_comment(self):
         response = self.author_client.post(
             self._get_edit_url(),
-            data=self.form_data
+            data=self.form_data,
         )
         self.assertRedirects(response, self._get_detail_url())
         self.comment.refresh_from_db()
         self.assertEqual(self.comment.text, self.NEW_COMMENT_TEXT)
 
-    def test_user_cant_edit_comment_of_another_user(
-        reader_client,
-        comment,
-        form_data,
-    ):
+    def test_user_cant_edit_comment_of_another_user(self):
+        reader_client = self.reader_client
+        comment = self.comment
+        form_data = self.form_data
+
         response = reader_client.post(
             comment.get_edit_url(),
             data=form_data,
