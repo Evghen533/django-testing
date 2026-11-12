@@ -10,6 +10,7 @@ class News(models.Model):
     title = models.CharField(max_length=50)
     text = models.TextField()
     date = models.DateField(default=datetime.today)
+    pub_date = models.DateField()
 
     class Meta:
         ordering = ('-date',)
