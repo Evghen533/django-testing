@@ -141,8 +141,6 @@ def test_author_can_edit_note(author_client, form_data, note):
 
 
 def test_other_user_cant_edit_note(not_author_client, form_data, note):
-    # Проверка, что это действительно не автор (если view опирается на это)
-    from django.test import Client  # только для типизации/ясности, не обязательно
     assert not_author_client.user != note.author
 
     url = reverse('notes:edit', args=(note.slug,))

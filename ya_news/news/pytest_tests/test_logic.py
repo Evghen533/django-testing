@@ -30,7 +30,6 @@ class TestCommentCreation(TestCase):
         url = reverse('news:detail', args=(self.news.id,))
         response = self.auth_client.post(url, data=self.form_data)
 
-        # Редирект только на URL без якоря #comments
         expected_url = reverse('news:detail', args=(self.news.id,))
         self.assertRedirects(response, expected_url)
 
@@ -49,7 +48,6 @@ class TestCommentCreation(TestCase):
 
         form = response.context.get('form')
         self.assertIsNotNone(form)
-        # Проверяем наличие ошибки в поле text, а не точный текст сообщения
         self.assertIn('text', form.errors)
 
         self.assertEqual(Comment.objects.count(), 0)
@@ -96,17 +94,31 @@ class TestCommentEditDelete(TestCase):
 
     def test_user_cant_delete_comment_of_another_user(self):
         response = self.reader_client.delete(self._get_delete_url())
-        self.assertIn(response.status_code, [HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN])
+        self.assertIn(
+            response.status_code,
+            [HTTPStatus.NOT_FOUND,
+            HTTPStatus.FORBIDDEN]
+        )
         self.assertEqual(Comment.objects.count(), 1)
 
     def test_author_can_edit_comment(self):
-        response = self.author_client.post(self._get_edit_url(), data=self.form_data)
+        response = self.author_client.post(
+            self._get_edit_url(),
+            data=self.form_data
+        )
         self.assertRedirects(response, self._get_detail_url())
         self.comment.refresh_from_db()
         self.assertEqual(self.comment.text, self.NEW_COMMENT_TEXT)
 
     def test_user_cant_edit_comment_of_another_user(self):
-        response = self.reader_client.post(self._get_edit_url(), data=self.form_data)
-        self.assertIn(response.status_code, [HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN])
+        response = self.reader_client.post(
+            self._get_edit_url(),
+            data=self.form_data
+        )
+        self.assertIn(
+            response.status_code,
+            [HTTPStatus.NOT_FOUND,
+            HTTPStatus.FORBIDDEN]
+        )
         self.comment.refresh_from_db()
         self.assertEqual(self.comment.text, self.COMMENT_TEXT)

@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 
-from news.forms import BAD_WORDS, WARNING
+from news.forms import BAD_WORDS
 from news.models import News, Comment
 
 User = get_user_model()
