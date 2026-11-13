@@ -1,5 +1,6 @@
 """Фикстуры для тестов приложения news."""
 
+import datetime
 from datetime import date, timedelta
 
 import pytest
@@ -142,11 +143,12 @@ def three_comments(news):
 
 @pytest.fixture
 def news_list(db):
+    base_date = datetime.date(2023, 1, 1)
     return [
         News.objects.create(
             title=f'News {i}',
             text=f'Text {i}',
-            pub_date=f'2023-01-{i:02d}',
+            pub_date=base_date + datetime.timedelta(days=i),
         )
         for i in range(5)
     ]

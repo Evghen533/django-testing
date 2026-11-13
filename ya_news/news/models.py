@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from datetime import date
 from django.urls import reverse
 
 from django.conf import settings
@@ -9,8 +10,8 @@ from django.db import models
 class News(models.Model):
     title = models.CharField(max_length=50)
     text = models.TextField()
-    date = models.DateField(default=datetime.today)
-    pub_date = models.DateField()
+    date = models.DateField(default=date.today)
+    pub_date = models.DateField(null=True, blank=True)
 
     class Meta:
         ordering = ('-date',)
