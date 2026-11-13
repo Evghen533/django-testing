@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from datetime import date
 from django.urls import reverse
 
