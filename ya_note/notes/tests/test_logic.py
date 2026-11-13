@@ -140,8 +140,8 @@ def test_author_can_edit_note(author_client, form_data, note):
 
 
 @pytest.mark.django_db
-def test_other_user_cant_edit_note(not_author_client, form_data, note):
-    assert not_author_client.user != note.author
+def test_other_user_cant_edit_note(not_author, not_author_client, form_data, note):
+    assert not_author != note.author
 
     url = reverse('notes:edit', args=(note.slug,))
     response = not_author_client.post(url, data=form_data)
