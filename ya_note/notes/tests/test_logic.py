@@ -23,7 +23,6 @@ def not_author():
 
 @pytest.fixture
 def form_data():
-    # Возвращаем новый словарь при каждом вызове, чтобы не было мутаций
     return {
         'title': 'Тестовая заметка',
         'text': 'Текст заметки',
@@ -43,7 +42,6 @@ def note(author):
 
 @pytest.fixture
 def slug_for_args(note):
-    # reverse ожидает кортеж или список для args
     return (note.slug,)
 
 
@@ -69,6 +67,7 @@ def client():
     return Client()
 
 
+@pytest.mark.django_db
 def test_user_can_create_note(author_client, author, form_data):
     url = reverse('notes:add')
     response = author_client.post(url, data=form_data)
@@ -94,10 +93,10 @@ def test_anonymous_user_cant_create_note(client, form_data):
     assert Note.objects.count() == 0
 
 
+@pytest.mark.django_db
 def test_not_unique_slug(author_client, note, form_data):
     url = reverse('notes:add')
 
-    # Создаём локальную копию и меняем slug, не трогая исходную фикстуру
     form_data_with_conflict = {**form_data, 'slug': note.slug}
 
     response = author_client.post(url, data=form_data_with_conflict)
@@ -106,14 +105,13 @@ def test_not_unique_slug(author_client, note, form_data):
     assert form is not None
     assert 'slug' in form.errors
 
-    # Заметка не должна быть создана: была 1 (note), стало 1
     assert Note.objects.count() == 1
 
 
+@pytest.mark.django_db
 def test_empty_slug(author_client, form_data):
     url = reverse('notes:add')
 
-    # Копируем, чтобы не мутировать общую фикстуру form_data
     form_data_no_slug = {**form_data}
     if 'slug' in form_data_no_slug:
         del form_data_no_slug['slug']
@@ -128,6 +126,7 @@ def test_empty_slug(author_client, form_data):
     assert new_note.slug == expected_slug
 
 
+@pytest.mark.django_db
 def test_author_can_edit_note(author_client, form_data, note):
     url = reverse('notes:edit', args=(note.slug,))
     response = author_client.post(url, data=form_data)
@@ -140,6 +139,7 @@ def test_author_can_edit_note(author_client, form_data, note):
     assert note.slug == form_data['slug']
 
 
+@pytest.mark.django_db
 def test_other_user_cant_edit_note(not_author_client, form_data, note):
     assert not_author_client.user != note.author
 
@@ -154,6 +154,7 @@ def test_other_user_cant_edit_note(not_author_client, form_data, note):
     assert note_from_db.slug == note.slug
 
 
+@pytest.mark.django_db
 def test_author_can_delete_note(author_client, slug_for_args):
     url = reverse('notes:delete', args=slug_for_args)
     response = author_client.post(url)
@@ -162,6 +163,7 @@ def test_author_can_delete_note(author_client, slug_for_args):
     assert Note.objects.count() == 0
 
 
+@pytest.mark.django_db
 def test_other_user_cant_delete_note(not_author_client, slug_for_args):
     url = reverse('notes:delete', args=slug_for_args)
     response = not_author_client.post(url)
