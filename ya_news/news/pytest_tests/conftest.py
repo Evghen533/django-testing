@@ -150,5 +150,5 @@ def news_list(db):
             text=f'Text {i}',
             pub_date=base_date + datetime.timedelta(days=i),
         )
-        for i in range(5)
+        for i in range(10)
     ]
