@@ -1,3 +1,5 @@
+import pytest
+
 from http import HTTPStatus
 from unittest import TestCase
 
@@ -7,6 +9,8 @@ from django.test import Client
 from django.urls import reverse
 
 from notes.models import Note
+
+pytestmark = pytest.mark.django_db
 
 User = get_user_model()
 
