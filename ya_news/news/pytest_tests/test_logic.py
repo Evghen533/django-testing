@@ -3,7 +3,6 @@ from http import HTTPStatus
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
-from news.forms import BAD_WORDS
 from news.models import Comment
 
 User = get_user_model()

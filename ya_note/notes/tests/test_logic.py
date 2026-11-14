@@ -61,7 +61,7 @@ class TestNotesLogic(TestCase):
         login_url = reverse('users:login')
         expected_url = f'{login_url}?next={url}'
         self.assertRedirects(response, expected_url)
-        self.assertEqual(Note.objects.count(), 1)  # Заметка не создана, осталась только из setUp
+        self.assertEqual(Note.objects.count(), 1)
 
     def test_not_unique_slug(self):
         """Нельзя создать заметку с существующим slug."""
