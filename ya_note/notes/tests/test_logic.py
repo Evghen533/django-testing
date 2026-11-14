@@ -22,6 +22,7 @@ class TestNotesLogic(TestCase):
         self.other_user_client = Client()
         self.other_user_client.force_login(self.other_user)
 
+        # Это «старая» заметка, которая будет в базе до создания новых
         self.note = Note.objects.create(
             title='Тестовая заметка',
             text='Текст заметки',
@@ -40,11 +41,14 @@ class TestNotesLogic(TestCase):
         url = reverse('notes:add')
         response = self.author_client.post(url, data=self.form_data)
 
-        # assertRedirects работает только при запуске через manage.py test
         self.assertRedirects(response, reverse('notes:success'))
 
-        self.assertEqual(Note.objects.count(), 2)  # Старая + новая
-        new_note = Note.objects.last()
+        # Проверяем, что теперь в базе 2 заметки (старая + новая)
+        self.assertEqual(Note.objects.count(), 2)
+
+        # ВАЖНО: ищем новую заметку по её slug, а не по .last()
+        new_note = Note.objects.get(slug=self.form_data['slug'])
+
         self.assertEqual(new_note.title, self.form_data['title'])
         self.assertEqual(new_note.text, self.form_data['text'])
         self.assertEqual(new_note.slug, self.form_data['slug'])
@@ -60,7 +64,7 @@ class TestNotesLogic(TestCase):
         response = client.post(url, data=self.form_data)
         self.assertRedirects(response, expected_next)
 
-        # Количество заметок не должно увеличиться
+        # Новая заметка не создана, поэтому count == 1 (только старая из setUp)
         self.assertEqual(Note.objects.count(), 1)
 
     def test_not_unique_slug(self):
@@ -73,7 +77,8 @@ class TestNotesLogic(TestCase):
 
         self.assertIsNotNone(form)
         self.assertIn('slug', form.errors)
-        # Новая заметка не создана
+
+        # Новая заметка не создана — count остаётся 1
         self.assertEqual(Note.objects.count(), 1)
 
     def test_empty_slug_generates_automatically(self):
@@ -88,10 +93,12 @@ class TestNotesLogic(TestCase):
         response = self.author_client.post(url, data=data_without_slug)
 
         self.assertRedirects(response, reverse('notes:success'))
-        self.assertEqual(Note.objects.count(), 2)
+        self.assertEqual(Note.objects.count(), 2)  # старая + новая
 
-        new_note = Note.objects.last()
+        # Ищем новую заметку по сгенерированному slug
+        new_note = Note.objects.get(slug=expected_slug)
         self.assertEqual(new_note.slug, expected_slug)
+        self.assertEqual(new_note.title, data_without_slug['title'])
 
     def test_author_can_edit_note(self):
         """Автор может редактировать свою заметку."""
@@ -123,6 +130,7 @@ class TestNotesLogic(TestCase):
         response = self.author_client.delete(url)
 
         self.assertRedirects(response, reverse('notes:success'))
+        # Заметка удалена, count == 0
         self.assertEqual(Note.objects.count(), 0)
 
     def test_other_user_cant_delete_note(self):
@@ -131,4 +139,5 @@ class TestNotesLogic(TestCase):
         response = self.other_user_client.delete(url)
 
         self.assertEqual(response.status_code, 404)
+        # Заметка осталась, count == 1
         self.assertEqual(Note.objects.count(), 1)
