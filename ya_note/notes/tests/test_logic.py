@@ -110,7 +110,6 @@ class TestNotesLogic(TestCase):
         url = reverse('notes:edit', args=(self.note.slug,))
         response = self.other_user_client.post(url, data=self.form_data)
 
-        # Твой view возвращает 404, если пользователь не тот. Если будет 403 — тоже ок
         self.assertEqual(response.status_code, 404)
 
         note_from_db = Note.objects.get(id=self.note.id)
