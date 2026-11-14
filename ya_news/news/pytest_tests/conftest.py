@@ -1,9 +1,8 @@
 """Фикстуры для тестов приложения news."""
 
 import datetime
-from datetime import date, timedelta
-
 import pytest
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
@@ -32,7 +31,7 @@ def news():
     return News.objects.create(
         title='Заголовок новости',
         text='Текст новости для тестов контента',
-        date=date.today(),
+        pub_date=datetime.date.today(),
     )
 
 
@@ -123,9 +122,8 @@ def delete_url(comment):
 
 
 @pytest.fixture
-def three_comments(news):
+def three_comments(news, author):
     """Создаёт 3 комментария от одного автора с разной датой создания."""
-    author = User.objects.create_user(username='Комментатор')
     now = timezone.now()
 
     comments = [
@@ -133,7 +131,7 @@ def three_comments(news):
             news=news,
             author=author,
             text=f'Текст {index}',
-            created=now + timedelta(days=index),
+            created=now + datetime.timedelta(days=index),
         )
         for index in range(3)
     ]
@@ -142,6 +140,7 @@ def three_comments(news):
 
 @pytest.fixture
 def news_list(db):
+    """Создаёт список из 10 тестовых новостей."""
     base_date = datetime.date(2023, 1, 1)
     return [
         News.objects.create(

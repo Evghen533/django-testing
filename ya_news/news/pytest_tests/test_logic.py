@@ -1,9 +1,13 @@
+import pytest
+
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
 from news.models import Comment
+
+pytestmark = pytest.mark.django_db
 
 User = get_user_model()
 
