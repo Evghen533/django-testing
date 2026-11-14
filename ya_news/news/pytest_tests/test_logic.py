@@ -1,7 +1,5 @@
 import pytest
 
-from http import HTTPStatus
-
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
@@ -19,33 +17,27 @@ def test_anonymous_user_cant_create_comment(client, news):
 
     response = client.post(url, data=form_data)
 
-    # Проверка: комментарий не создан
     assert Comment.objects.count() == 0
-    # Обычно при попытке действия без авторизации редиректят на логин (302)
     assert response.status_code == 302
 
 
-def test_user_can_create_comment(author_client, news):
+def test_user_can_create_comment(author, author_client, news):
     """Авторизованный пользователь может оставить комментарий."""
     url = reverse('news:detail', args=(news.id,))
     form_data = {'text': 'Текст комментария'}
 
-    # Запоминаем количество комментариев ДО отправки формы
     initial_count = Comment.objects.count()
 
     response = author_client.post(url, data=form_data)
 
-    # Проверка: редирект после успешного создания
     assert response.status_code == 302
-
-    # Проверка: количество комментариев увеличилось ровно на 1
     assert Comment.objects.count() == initial_count + 1
 
-    # Находим только что созданный комментарий (самый свежий или по тексту)
     comment = Comment.objects.order_by('-created').first()
+    assert comment is not None
     assert comment.text == 'Текст комментария'
     assert comment.news == news
-    assert comment.author == author_client.user
+    assert comment.author == author
 
 
 def test_user_cant_use_bad_words(author_client, news, bad_words_data):
@@ -54,15 +46,12 @@ def test_user_cant_use_bad_words(author_client, news, bad_words_data):
 
     response = author_client.post(url, data=bad_words_data)
 
-    # Проверка: форма вернулась с ошибкой (статус 200 OK)
     assert response.status_code == 200
 
-    # Проверка: ошибка есть в контексте формы
     form = response.context.get('form')
     assert form is not None
     assert 'text' in form.errors
 
-    # Проверка: комментарий не создан
     assert Comment.objects.count() == 0
 
 
@@ -84,7 +73,8 @@ def test_user_cant_delete_comment_of_another_user(reader_client, comment):
 
     response = reader_client.delete(url)
 
-    assert response.status_code in (HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN)
+    # Лучше явно указать 403, если в view ты возвращаешь Forbidden
+    assert response.status_code == 403
     assert Comment.objects.filter(pk=comment.pk).exists()
 
 
@@ -110,7 +100,7 @@ def test_user_cant_edit_comment_of_another_user(reader_client, comment):
 
     response = reader_client.post(url, data=form_data)
 
-    assert response.status_code in (HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN)
+    assert response.status_code == 403
 
     comment.refresh_from_db()
     assert comment.text != new_text
