@@ -1,22 +1,15 @@
-import pytest
-
-from http import HTTPStatus
-from unittest import TestCase
-
-from pytils.translit import slugify
 from django.contrib.auth import get_user_model
-from django.test import Client
+from django.test import TestCase, Client
 from django.urls import reverse
+from pytils.translit import slugify
 
 from notes.models import Note
-
-pytestmark = pytest.mark.django_db
 
 User = get_user_model()
 
 
 class TestNotesLogic(TestCase):
-    """Тесты логики работы с заметками на unittest."""
+    """Тесты логики работы с заметками на Django unittest."""
 
     def setUp(self):
         """Подготовка данных перед каждым тестом."""
@@ -47,9 +40,10 @@ class TestNotesLogic(TestCase):
         url = reverse('notes:add')
         response = self.author_client.post(url, data=self.form_data)
 
+        # assertRedirects работает только при запуске через manage.py test
         self.assertRedirects(response, reverse('notes:success'))
-        self.assertEqual(Note.objects.count(), 1)
 
+        self.assertEqual(Note.objects.count(), 2)  # Старая + новая
         new_note = Note.objects.last()
         self.assertEqual(new_note.title, self.form_data['title'])
         self.assertEqual(new_note.text, self.form_data['text'])
@@ -58,27 +52,28 @@ class TestNotesLogic(TestCase):
 
     def test_anonymous_user_cant_create_note(self):
         """Анонимный пользователь не может создать заметку."""
-        client = Client()
+        client = Client()  # анонимный клиент
         url = reverse('notes:add')
-        response = client.post(url, data=self.form_data)
-
         login_url = reverse('users:login')
-        expected_url = f'{login_url}?next={url}'
-        self.assertRedirects(response, expected_url)
+        expected_next = f'{login_url}?next={url}'
+
+        response = client.post(url, data=self.form_data)
+        self.assertRedirects(response, expected_next)
+
+        # Количество заметок не должно увеличиться
         self.assertEqual(Note.objects.count(), 1)
 
     def test_not_unique_slug(self):
         """Нельзя создать заметку с существующим slug."""
-        # Используем slug уже существующей заметки из setUp
         conflict_data = {**self.form_data, 'slug': self.note.slug}
-
         url = reverse('notes:add')
-        response = self.author_client.post(url, data=conflict_data)
 
+        response = self.author_client.post(url, data=conflict_data)
         form = response.context.get('form')
+
         self.assertIsNotNone(form)
         self.assertIn('slug', form.errors)
-        # Количество заметок не должно увеличиться
+        # Новая заметка не создана
         self.assertEqual(Note.objects.count(), 1)
 
     def test_empty_slug_generates_automatically(self):
@@ -87,15 +82,15 @@ class TestNotesLogic(TestCase):
             'title': 'Заметка без slug',
             'text': 'Текст заметки',
         }
+        expected_slug = slugify(data_without_slug['title'])
 
         url = reverse('notes:add')
         response = self.author_client.post(url, data=data_without_slug)
 
         self.assertRedirects(response, reverse('notes:success'))
-        self.assertEqual(Note.objects.count(), 2)  # Старая + новая
+        self.assertEqual(Note.objects.count(), 2)
 
         new_note = Note.objects.last()
-        expected_slug = slugify(data_without_slug['title'])
         self.assertEqual(new_note.slug, expected_slug)
 
     def test_author_can_edit_note(self):
@@ -115,9 +110,9 @@ class TestNotesLogic(TestCase):
         url = reverse('notes:edit', args=(self.note.slug,))
         response = self.other_user_client.post(url, data=self.form_data)
 
-        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        # Твой view возвращает 404, если пользователь не тот. Если будет 403 — тоже ок
+        self.assertEqual(response.status_code, 404)
 
-        # Проверяем, что заметка не изменилась
         note_from_db = Note.objects.get(id=self.note.id)
         self.assertEqual(note_from_db.title, self.note.title)
         self.assertEqual(note_from_db.text, self.note.text)
@@ -126,7 +121,6 @@ class TestNotesLogic(TestCase):
     def test_author_can_delete_note(self):
         """Автор может удалить свою заметку."""
         url = reverse('notes:delete', args=(self.note.slug,))
-        # ИСПРАВЛЕНИЕ: используем DELETE запрос
         response = self.author_client.delete(url)
 
         self.assertRedirects(response, reverse('notes:success'))
@@ -135,8 +129,7 @@ class TestNotesLogic(TestCase):
     def test_other_user_cant_delete_note(self):
         """Другой пользователь не может удалить чужую заметку."""
         url = reverse('notes:delete', args=(self.note.slug,))
-        # ИСПРАВЛЕНИЕ: используем DELETE запрос
         response = self.other_user_client.delete(url)
 
-        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        self.assertEqual(response.status_code, 404)
         self.assertEqual(Note.objects.count(), 1)
