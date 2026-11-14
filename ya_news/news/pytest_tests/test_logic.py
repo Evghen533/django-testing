@@ -30,14 +30,19 @@ def test_user_can_create_comment(author_client, news):
     url = reverse('news:detail', args=(news.id,))
     form_data = {'text': 'Текст комментария'}
 
+    # Запоминаем количество комментариев ДО отправки формы
+    initial_count = Comment.objects.count()
+
     response = author_client.post(url, data=form_data)
 
     # Проверка: редирект после успешного создания
     assert response.status_code == 302
 
-    # Проверка: комментарий создан
-    assert Comment.objects.count() == 1
-    comment = Comment.objects.first()
+    # Проверка: количество комментариев увеличилось ровно на 1
+    assert Comment.objects.count() == initial_count + 1
+
+    # Находим только что созданный комментарий (самый свежий или по тексту)
+    comment = Comment.objects.order_by('-created').first()
     assert comment.text == 'Текст комментария'
     assert comment.news == news
     assert comment.author == author_client.user
