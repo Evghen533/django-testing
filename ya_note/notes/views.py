@@ -1,0 +1,94 @@
+from django.http import Http404
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import (
+    ListView,
+    DetailView,
+    CreateView,
+    UpdateView,
+    DeleteView,
+    TemplateView,
+)
+from django.urls import reverse_lazy
+from .models import Note
+from .forms import NoteForm
+
+
+class Home(ListView):
+    """Главная страница: список заметок (публичная — видны все)."""
+    model = Note
+    template_name = 'notes/list.html'
+    paginate_by = 10
+
+    def get_queryset(self):
+        return Note.objects.all().order_by('-pub_date')
+
+
+class NotesList(LoginRequiredMixin, ListView):
+    """Личный список заметок: видны только свои заметки."""
+    model = Note
+    template_name = 'notes/list.html'
+    paginate_by = 10
+
+    def get_queryset(self):
+        return (
+            Note.objects
+            .filter(author=self.request.user)
+            .order_by('-pub_date')
+        )
+
+
+class NoteDetail(LoginRequiredMixin, DetailView):
+    model = Note
+    template_name = 'notes/detail.html'
+    context_object_name = 'note'
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset=queryset)
+        if obj.author != self.request.user:
+            raise Http404("Заметка не найдена")
+        return obj
+
+
+class NoteCreate(LoginRequiredMixin, CreateView):
+    """Создание заметки (только для авторизованных)."""
+    model = Note
+    form_class = NoteForm
+    template_name = 'notes/form.html'
+    success_url = reverse_lazy('notes:success')
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
+
+
+class NoteUpdate(LoginRequiredMixin, UpdateView):
+    model = Note
+    form_class = NoteForm
+    template_name = 'notes/form.html'
+    success_url = reverse_lazy('notes:success')
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset=queryset)
+        if obj.author != self.request.user:
+            raise Http404("Заметка не найдена")
+        return obj
+
+
+class NoteDelete(LoginRequiredMixin, DeleteView):
+    model = Note
+    template_name = 'notes/delete.html'
+    success_url = reverse_lazy('notes:success')
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset=queryset)
+        if obj.author != self.request.user:
+            raise Http404("Заметка не найдена")
+        return obj
+
+
+@method_decorator(login_required, name='dispatch')
+class NoteSuccess(TemplateView):
+    """Страница успеха после создания заметки."""
+    template_name = 'notes/success.html'

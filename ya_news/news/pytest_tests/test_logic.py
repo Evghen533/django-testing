@@ -1,0 +1,97 @@
+from http import HTTPStatus
+
+import pytest
+
+from news.models import Comment
+
+
+@pytest.mark.django_db
+def test_anonymous_cannot_create_comment(
+    client, detail_url, login_url, form_data
+):
+    """Аноним не может отправить комментарий."""
+    initial_count = Comment.objects.count()
+    response = client.post(detail_url, data=form_data)
+    assert response.status_code == HTTPStatus.FOUND
+    assert response.url == f'{login_url}?next={detail_url}'
+    assert Comment.objects.count() == initial_count
+
+
+@pytest.mark.django_db
+def test_authorized_user_can_create_comment(
+    author_client, news, detail_url, form_data, author
+):
+    """Авторизованный пользователь может отправить комментарий."""
+    initial_count = Comment.objects.count()
+
+    response = author_client.post(detail_url, data=form_data)
+
+    assert response.status_code == HTTPStatus.FOUND
+    assert Comment.objects.count() == initial_count + 1
+
+    comment = Comment.objects.order_by('pk').last()
+    assert comment.text == form_data['text']
+    assert comment.news == news
+    assert comment.author == author
+
+
+@pytest.mark.django_db
+def test_comment_with_bad_words_not_published(
+    author_client,
+    detail_url,
+    bad_words_data
+):
+    """Комментарий со стоп-словами не публикуется, форма возвращает ошибку."""
+    initial_count = Comment.objects.count()
+
+    response = author_client.post(detail_url, data=bad_words_data)
+
+    assert response.status_code == HTTPStatus.OK
+    assert 'text' in response.context['form'].errors
+    assert Comment.objects.count() == initial_count
+
+
+@pytest.mark.django_db
+def test_author_can_edit_own_comment(
+    author_client, comment, edit_url, form_data
+):
+    """Автор может редактировать свой комментарий."""
+    response = author_client.post(edit_url, data=form_data)
+
+    assert response.status_code == HTTPStatus.FOUND
+    comment.refresh_from_db()
+    assert comment.text == form_data['text']
+
+
+@pytest.mark.django_db
+def test_author_can_delete_own_comment(author_client, comment, delete_url):
+    """Автор может удалить свой комментарий."""
+    response = author_client.post(delete_url)
+
+    assert response.status_code == HTTPStatus.FOUND
+    assert not Comment.objects.filter(pk=comment.pk).exists()
+
+
+@pytest.mark.django_db
+def test_other_user_cannot_edit_foreign_comment(
+    reader_client, comment, edit_url, form_data
+):
+    """Чужой комментарий нельзя редактировать."""
+    original_text = comment.text
+
+    response = reader_client.post(edit_url, data=form_data)
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    comment.refresh_from_db()
+    assert comment.text == original_text
+
+
+@pytest.mark.django_db
+def test_other_user_cannot_delete_foreign_comment(
+    reader_client, comment, delete_url
+):
+    """Чужой комментарий нельзя удалить."""
+    response = reader_client.post(delete_url)
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert Comment.objects.filter(pk=comment.pk).exists()
